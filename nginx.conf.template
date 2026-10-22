@@ -1,0 +1,92 @@
+# Production equivalent of the Vite dev proxy in `vite.config.ts`.
+# Keep the two in sync when adding a provider.
+#
+# This file is a template: the nginx image's entrypoint runs `envsubst` over
+# /etc/nginx/templates at container start. `NGINX_ENVSUBST_FILTER` in the
+# Dockerfile restricts substitution to our three key names, so nginx's own
+# $variables below survive untouched. The keys therefore arrive as runtime
+# environment variables and are never baked into the image.
+
+server {
+    listen       80;
+    server_name  _;
+
+    root  /usr/share/nginx/html;
+    index index.html;
+
+    gzip            on;
+    gzip_vary       on;
+    gzip_min_length 1024;
+    gzip_types      text/plain text/css application/javascript application/json image/svg+xml;
+
+    # Booleans only — which keys are set — so the app can choose live or sample
+    # data without the keys ever reaching the browser. Written at container
+    # start by docker/40-api-status.sh.
+    location = /api/status {
+        default_type application/json;
+        add_header   Cache-Control "no-store";
+        try_files    /api-status.json =404;
+    }
+
+    # --- Provider proxies -------------------------------------------------
+    # The browser only ever calls these same-origin paths. Two reasons:
+    #   1. NewsAPI.org sends no CORS headers at all and permits localhost
+    #      origins only, so a deployed page cannot reach it directly.
+    #   2. Keys stay server-side and never enter the JS bundle.
+    #
+    # Each block appends its credential to $args and rewrites the path, rather
+    # than interpolating variables into proxy_pass. That is deliberate: a
+    # proxy_pass containing variables defers DNS to request time and then needs
+    # an explicit `resolver`, which is brittle inside Docker. Written this way,
+    # nginx resolves each upstream once at startup using the container's own
+    # resolver.
+
+    # /api/guardian/search?q=x -> https://content.guardianapis.com/search?q=x&api-key=...
+    location /api/guardian/ {
+        set $args             "$args&api-key=${GUARDIAN_KEY}";
+        rewrite               ^/api/guardian/(.*)$ /$1 break;
+        proxy_pass            https://content.guardianapis.com;
+        proxy_ssl_server_name on;
+        proxy_set_header      Host content.guardianapis.com;
+        proxy_set_header      Accept application/json;
+    }
+
+    # /api/nyt/articlesearch.json -> https://api.nytimes.com/svc/search/v2/articlesearch.json?...
+    location /api/nyt/ {
+        set $args             "$args&api-key=${NYT_KEY}";
+        rewrite               ^/api/nyt/(.*)$ /svc/search/v2/$1 break;
+        proxy_pass            https://api.nytimes.com;
+        proxy_ssl_server_name on;
+        proxy_set_header      Host api.nytimes.com;
+        proxy_set_header      Accept application/json;
+    }
+
+    # NewsAPI takes its key as a header, keeping it out of upstream access logs.
+    location /api/newsapi/ {
+        rewrite               ^/api/newsapi/(.*)$ /v2/$1 break;
+        proxy_pass            https://newsapi.org;
+        proxy_ssl_server_name on;
+        proxy_set_header      Host newsapi.org;
+        proxy_set_header      X-Api-Key ${NEWSAPI_KEY};
+        proxy_set_header      Accept application/json;
+        # NewsAPI rejects requests that arrive without a user agent.
+        proxy_set_header      User-Agent "newsstand/1.0";
+    }
+
+    # --- Static assets ----------------------------------------------------
+    # Hashed build output is immutable; index.html must never be cached, or a
+    # returning visitor would keep booting a stale bundle.
+    location /assets/ {
+        expires    1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+
+    # SPA fallback.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

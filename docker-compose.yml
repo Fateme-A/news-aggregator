@@ -1,0 +1,10 @@
+services:
+  newsstand:
+    build: .
+    image: newsstand
+    ports:
+      - '8080:80'
+    # Keys are supplied at run time and never baked into the image.
+    env_file:
+      - .env.local
+    restart: unless-stopped
