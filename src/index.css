@@ -1,0 +1,145 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ *
+ * The whole visual system is defined here and consumed as Tailwind utilities
+ * (`bg-surface`, `rounded-card`, `shadow-card`) everywhere else, so a change to
+ * the palette, the radius rhythm or the elevation scale is a one-file edit.
+ *
+ * The identity is a newsroom desk: cool paper, navy ink, and a single press-blue
+ * accent. Serif stays on headlines; colour stays quiet so the stories lead.
+ */
+@theme {
+  /* --- Surfaces, from furthest back to nearest front ------------------- */
+  --color-canvas: #f3f5f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef1f6;
+
+  /* Hairlines. `border-strong` is for deliberate emphasis only. */
+  --color-border: #e1e6ee;
+  --color-border-strong: #c8d0db;
+
+  /* --- Text, from strongest to weakest -------------------------------- */
+  --color-ink: #0e1626;
+  --color-muted: #4b5568;
+  --color-subtle: #7b8594;
+
+  /* --- Accent ---------------------------------------------------------- */
+  --color-accent: #1a56db;
+  --color-accent-hover: #1546b3;
+  --color-accent-soft: #e8effc;
+  --color-accent-ink: #163a8a;
+
+  /* --- Status ---------------------------------------------------------- */
+  --color-danger: #c81e1e;
+  --color-danger-soft: #fde8e8;
+  --color-warning-soft: #fef3c7;
+  --color-warning-ink: #92400e;
+
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
+
+  /*
+   * Radius rhythm. Three steps, each tied to a role, so nothing is picked ad
+   * hoc: controls are softly rounded, containers more so, sheets most of all.
+   */
+  --radius-field: 0.75rem; /* inputs, chips, small buttons */
+  --radius-card: 1.125rem; /* cards, panels, notices */
+  --radius-sheet: 1.5rem; /* dialogs and bottom sheets */
+
+  /*
+   * Elevation. Shadows are navy-tinted so cards sit on the cool paper ground
+   * instead of looking like a generic grey overlay.
+   */
+  --shadow-subtle: 0 1px 2px rgb(14 22 38 / 0.05);
+  --shadow-card: 0 1px 2px rgb(14 22 38 / 0.04), 0 10px 28px -18px rgb(14 22 38 / 0.16);
+  --shadow-lift: 0 2px 4px rgb(14 22 38 / 0.05), 0 20px 44px -22px rgb(14 22 38 / 0.22);
+  --shadow-focus: 0 0 0 4px rgb(26 86 219 / 0.16);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    /* A barely-there blue wash so the ground is not flat, kept under 8% alpha
+       so it never competes with content. */
+    background-image:
+      radial-gradient(1100px 460px at 10% -12%, rgb(26 86 219 / 0.06), transparent 58%),
+      radial-gradient(820px 380px at 100% -4%, rgb(14 22 38 / 0.04), transparent 52%);
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* Safety net: no layout mistake should ever produce a sideways scrollbar. */
+    overflow-x: clip;
+  }
+
+  /* Visible focus for keyboard users on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-field);
+  }
+
+  /* Native date pickers inherit almost nothing; nudge the indicator to match. */
+  ::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.5;
+  }
+
+  ::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.9;
+  }
+
+  /* The search input's native clear affordance clashes with our own styling. */
+  input[type='search']::-webkit-search-decoration,
+  input[type='search']::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/**
+ * A horizontally scrollable rail that hides its scrollbar — used for the mobile
+ * category chips. The overflow is contained here so it can never leak into a
+ * page-level horizontal scroll.
+ */
+@utility rail {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  & > * {
+    scroll-snap-align: start;
+    flex: none;
+  }
+}
+
+/** Respects the iOS home indicator on bottom-anchored sheets and bars. */
+@utility pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
