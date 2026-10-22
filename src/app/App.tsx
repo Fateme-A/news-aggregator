@@ -165,11 +165,23 @@ export function App() {
             </span>
           </a>
 
-          <div className="order-2 min-w-0 basis-full lg:order-2 lg:basis-auto lg:flex-1">
-            <SearchBar
-              value={keyword}
-              onChange={resetToFirstPage(setKeyword)}
-              isSearching={isFetching && !isLoading}
+          <div className="order-2 flex min-w-0 basis-full items-center gap-2 lg:contents">
+            <div className="min-w-0 flex-1 lg:order-2">
+              <SearchBar
+                value={keyword}
+                onChange={resetToFirstPage(setKeyword)}
+                isSearching={isFetching && !isLoading}
+              />
+            </div>
+
+            <DataModeBar
+              deliveries={deliveries}
+              pending={isResolvingMode}
+              onChange={(preference) => {
+                useDataMode.getState().setPreference(preference)
+                setPage(1)
+              }}
+              className="lg:order-3"
             />
           </div>
 
@@ -208,23 +220,14 @@ export function App() {
             className="order-1 h-11 shrink-0 px-3.5 sm:px-5 lg:order-3"
           >
             <IconAdjustmentsHorizontal size={18} stroke={1.75} aria-hidden />
-            Personalise
+            <span className="hidden sm:inline">Personalise</span>
           </Button>
         </div>
-
-        <DataModeBar
-          deliveries={deliveries}
-          pending={isResolvingMode}
-          onChange={(preference) => {
-            useDataMode.getState().setPreference(preference)
-            setPage(1)
-          }}
-        />
       </header>
 
       <div className="mx-auto max-w-7xl px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:flex lg:gap-8 lg:pt-8 lg:pb-8">
         <aside className="hidden w-[17rem] shrink-0 lg:block">
-          <div className="sticky top-28 rounded-card bg-surface p-5 ring-1 ring-border ring-inset">
+          <div className="sticky top-24 rounded-card bg-surface p-5 ring-1 ring-border ring-inset">
             {isMyFeed ? (
               <div>
                 <h2 className="font-serif text-xl font-medium tracking-tight text-ink">My Feed</h2>
