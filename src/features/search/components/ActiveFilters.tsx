@@ -1,11 +1,11 @@
 import type { Category, SourceId } from '@/domain/article'
 import { cn } from '@/lib/cn'
 import { IconX } from '@tabler/icons-react'
-import { describeActiveFilters } from './active-filters'
-import type { FilterValues } from './FilterPanel'
+import { describeActiveFilters } from '../lib/active-filters'
+import type { ExploreFilters } from '../lib/filters'
 
 interface ActiveFiltersProps {
-  values: FilterValues
+  values: ExploreFilters
   onRemoveSource: (id: SourceId) => void
   onRemoveCategory: (category: Category) => void
   onClearDates: () => void

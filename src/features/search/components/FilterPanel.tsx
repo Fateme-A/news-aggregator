@@ -3,21 +3,15 @@ import { Chip } from '@/components/ui/Chip'
 import { Section } from '@/components/ui/Section'
 import { Toggle } from '@/components/ui/Toggle'
 import type { Category, SourceId } from '@/domain/article'
+import type { ExploreFilters } from '../lib/filters'
 import { CATEGORIES, CATEGORY_LABELS } from '@/domain/article'
 import { createEmptyQuery } from '@/domain/query'
 import { todayIso } from '@/lib/dates'
 import { SOURCES } from '@/sources/registry'
 
-export interface FilterValues {
-  sources: SourceId[]
-  categories: Category[]
-  dateFrom: string
-  dateTo: string
-}
-
 interface FilterPanelProps {
   idPrefix?: string
-  values: FilterValues
+  values: ExploreFilters
   onToggleSource: (id: SourceId) => void
   onToggleCategory: (category: Category) => void
   onDateFromChange: (value: string) => void

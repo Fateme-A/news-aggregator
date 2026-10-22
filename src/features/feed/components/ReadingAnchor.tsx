@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react'
-import { anchorDrift, findReadingAnchor, type ReadingAnchor as Anchor } from './reading-anchor'
+import { anchorDrift, findReadingAnchor, type ReadingAnchor as Anchor } from '../lib/reading-anchor'
 
 interface ReadingAnchorProps {
   /** A new identity whenever the rendered list changes. */

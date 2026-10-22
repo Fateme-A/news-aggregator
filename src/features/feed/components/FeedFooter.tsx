@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button'
-import { MAX_PAGES } from '@/hooks/useArticles'
+import { MAX_PAGES } from '@/features/feed/hooks/useArticles'
 import type { RefObject } from 'react'
-import type { FeedFooterState } from './feed-state'
+import type { FeedFooterState } from '../lib/feed-state'
 
 interface PaginationProps {
   page: number

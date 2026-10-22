@@ -1,17 +1,17 @@
 import type { Article } from '@/domain/article'
-import { describeClientFilters } from '@/features/feed/describe-filters'
+import { describeClientFilters } from '@/features/feed/lib/describe-filters'
 import {
   canLoadMore as canLoadMoreFrom,
   resolveFeedFooter,
   resolveFeedState,
   type FeedFooterState,
   type FeedState,
-} from '@/features/feed/feed-state'
-import { describePersonalisation } from '@/features/preferences/summary'
-import { useArticles, type SourceFailure } from '@/hooks/useArticles'
-import { useFeedQuery, type FeedQuery } from '@/hooks/useFeedQuery'
+} from '@/features/feed/lib/feed-state'
+import { describePersonalisation } from '@/features/preferences/lib/summary'
+import { useArticles, type SourceFailure } from '@/features/feed/hooks/useArticles'
+import { useFeedQuery, type FeedQuery } from '@/features/feed/hooks/useFeedQuery'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import { useSourceAvailability } from '@/hooks/useSourceAvailability'
+import { useSourceAvailability } from '@/features/data-mode/hooks/useSourceAvailability'
 import { useDataMode, type DataPreference, type SourceDelivery } from '@/store/data-mode'
 import { usePreferences, type BrowseMode, type FeedMode } from '@/store/preferences'
 import { useCallback, useState, type RefObject } from 'react'

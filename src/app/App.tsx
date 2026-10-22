@@ -1,12 +1,12 @@
-import { AppHeader } from '@/app/AppHeader'
-import { useNewsstand } from '@/app/use-newsstand'
+import { AppHeader } from '@/components/layout/AppHeader'
+import { useNewsstand } from '@/features/feed/hooks/useNewsstand'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
-import { DataModeNotice } from '@/features/data-mode/DataModeNotice'
-import { ArticleGrid } from '@/features/feed/ArticleGrid'
-import { FeedPagination, FeedSentinel } from '@/features/feed/FeedFooter'
-import { FeedNotices } from '@/features/feed/FeedNotices'
-import { FeedSidebar } from '@/features/feed/FeedSidebar'
+import { DataModeNotice } from '@/features/data-mode/components/DataModeNotice'
+import { ArticleGrid } from '@/features/feed/components/ArticleGrid'
+import { FeedPagination, FeedSentinel } from '@/features/feed/components/FeedFooter'
+import { FeedNotices } from '@/features/feed/components/FeedNotices'
+import { FeedSidebar } from '@/features/feed/components/FeedSidebar'
 import {
   AllFailedState,
   EmptyState,
@@ -14,15 +14,15 @@ import {
   NoSourcesState,
   PersonaliseState,
   SourceFailureNotice,
-} from '@/features/feed/FeedStates'
-import { FeedToolbar } from '@/features/feed/FeedToolbar'
-import { PersonalisedBanner } from '@/features/feed/PersonalisedBanner'
-import { ReadingAnchor } from '@/features/feed/ReadingAnchor'
-import { PreferencesDialog } from '@/features/preferences/PreferencesDialog'
-import { ActiveFilters } from '@/features/search/ActiveFilters'
-import { CategoryRail } from '@/features/search/CategoryRail'
-import { FilterPanel } from '@/features/search/FilterPanel'
-import { SettingsDialog } from '@/features/settings/SettingsDialog'
+} from '@/features/feed/components/FeedStates'
+import { FeedToolbar } from '@/features/feed/components/FeedToolbar'
+import { PersonalisedBanner } from '@/features/feed/components/PersonalisedBanner'
+import { ReadingAnchor } from '@/features/feed/components/ReadingAnchor'
+import { PreferencesDialog } from '@/features/preferences/components/PreferencesDialog'
+import { ActiveFilters } from '@/features/search/components/ActiveFilters'
+import { CategoryRail } from '@/features/search/components/CategoryRail'
+import { FilterPanel } from '@/features/search/components/FilterPanel'
+import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
 
 export function App() {
   const view = useNewsstand()

@@ -1,6 +1,6 @@
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/Button'
-import { SearchBar } from '@/features/search/SearchBar'
+import { SearchBar } from '@/features/search/components/SearchBar'
 import { IconAdjustmentsHorizontal, IconFilter, IconSettings } from '@tabler/icons-react'
 
 interface AppHeaderProps {

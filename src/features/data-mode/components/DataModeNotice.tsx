@@ -1,6 +1,6 @@
 import { useDataMode, type SourceDelivery } from '@/store/data-mode'
 import { IconFlask } from '@tabler/icons-react'
-import { describeDataMode } from './describe'
+import { describeDataMode } from '../lib/describe'
 
 interface DataModeNoticeProps {
   deliveries: readonly SourceDelivery[]

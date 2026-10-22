@@ -2,15 +2,9 @@ import type { Category, SourceId } from '@/domain/article'
 import { DEFAULT_PAGE_SIZE, type ArticleQuery } from '@/domain/query'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { ALL_SOURCE_IDS } from '@/sources/registry'
+import type { ExploreFilters } from '@/features/search/lib/filters'
 import { usePreferences } from '@/store/preferences'
 import { useCallback, useMemo, useState } from 'react'
-
-export interface ExploreFilters {
-  sources: SourceId[]
-  categories: Category[]
-  dateFrom: string
-  dateTo: string
-}
 
 export interface FeedQuery {
   /** Raw keyword, for the controlled input. */

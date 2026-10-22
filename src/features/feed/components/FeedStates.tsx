@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/Button'
-import type { SourceFailure } from '@/hooks/useArticles'
+import type { SourceFailure } from '@/features/feed/hooks/useArticles'
 import { cn } from '@/lib/cn'
 import {
   IconAlertCircle,

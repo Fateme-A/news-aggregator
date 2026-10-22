@@ -2,7 +2,7 @@ import type { Category, SourceId } from '@/domain/article'
 import { CATEGORY_LABELS } from '@/domain/article'
 import { formatDay } from '@/lib/dates'
 import { SOURCES } from '@/sources/registry'
-import type { FilterValues } from './FilterPanel'
+import type { ExploreFilters } from './filters'
 
 /** One applied filter: a label for the reader, and enough to undo it. */
 export type ActiveFilter =
@@ -21,7 +21,7 @@ function dateLabel(from: string, to: string): string | undefined {
  * Every filter narrowing Explore. Sources appear only once the selection is
  * narrower than all of them — three of three is the default, not a choice.
  */
-export function describeActiveFilters(values: FilterValues): ActiveFilter[] {
+export function describeActiveFilters(values: ExploreFilters): ActiveFilter[] {
   const filters: ActiveFilter[] = []
 
   if (values.sources.length !== SOURCES.length) {

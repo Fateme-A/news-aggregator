@@ -1,9 +1,9 @@
-import type { FilterValues } from '@/features/search/FilterPanel'
+import type { ExploreFilters } from './filters'
 import { ALL_SOURCE_IDS } from '@/sources/registry'
 import { describe, expect, it } from 'vitest'
 import { describeActiveFilters } from './active-filters'
 
-function values(overrides: Partial<FilterValues> = {}): FilterValues {
+function values(overrides: Partial<ExploreFilters> = {}): ExploreFilters {
   return {
     sources: [...ALL_SOURCE_IDS],
     categories: [],

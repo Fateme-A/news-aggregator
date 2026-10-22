@@ -1,4 +1,4 @@
-import type { ClientFilter } from '@/hooks/useArticles'
+import type { ClientFilter } from '@/features/feed/hooks/useArticles'
 
 function joinNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? ''
