@@ -11,8 +11,8 @@ React 19 · TypeScript (strict) · Vite 8 · TanStack Query · Zustand · Tailwi
 | **Run it**       | `docker compose up --build` → <http://localhost:8080> (no API keys needed)     |
 | **Providers**    | Guardian · NYT Article Search · NewsAPI.org, behind one `NewsSource` interface |
 | **Keys**         | Server-side only — never in the bundle, never in an image layer                |
-| **Tests**        | 154 across 16 files; 90% statements, 92% lines                                 |
-| **Bundle**       | 133 kB gzipped JS, 8 kB gzipped CSS                                            |
+| **Tests**        | 169 across 18 files; 90% statements, 93% lines                                 |
+| **Bundle**       | 135 kB gzipped JS, 8 kB gzipped CSS                                            |
 | **Runtime deps** | 9, no UI framework beyond Radix Dialog                                         |
 
 ---
@@ -470,7 +470,7 @@ events, so a position recorded earlier is stale by the time the merge lands.
 
 | Asset | Raw    | gzip       |
 | ----- | ------ | ---------- |
-| JS    | 425 kB | **133 kB** |
+| JS    | 428 kB | **135 kB** |
 | CSS   | 41 kB  | 8 kB       |
 
 One chunk — there is one screen and no routing, so there is nothing meaningful to split. Fonts are
@@ -507,11 +507,11 @@ CI builds the image and asserts that a container with **no API keys** comes up a
 ## Testing
 
 ```bash
-npm run test                # 154 tests across 16 files
-npx vitest run --coverage   # 90% statements · 92% lines
+npm run test                # 169 tests across 18 files
+npx vitest run --coverage   # 90% statements · 93% lines
 ```
 
-Verified on the current tree: 154 passing, ESLint clean, `tsc -b` clean, production build clean.
+Verified on the current tree: 169 passing, ESLint clean, `tsc -b` clean, production build clean.
 
 | Layer                           | What is covered                                                                                                                                                                                                                                                                                                                                                                         |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

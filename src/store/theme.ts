@@ -10,7 +10,7 @@ export type ThemeChoice = (typeof THEME_CHOICES)[number]
 /** What is actually painted. `system` resolves to one of these. */
 export type Theme = 'light' | 'dark'
 
-export const THEME_LABELS: Record<ThemeChoice, string> = {
+const THEME_LABELS: Record<ThemeChoice, string> = {
   light: 'Light',
   dark: 'Dark',
   system: 'System',
@@ -62,6 +62,11 @@ interface ThemeState {
 /** The choice one step on from `choice`, so the control can name where it goes. */
 export function nextChoice(choice: ThemeChoice): ThemeChoice {
   return THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length]!
+}
+
+/** Names both the current choice and the next, so a cycling control is legible. */
+export function themeControlLabel(choice: ThemeChoice): string {
+  return `Theme: ${THEME_LABELS[choice]}. Switch to ${THEME_LABELS[nextChoice(choice)].toLowerCase()}.`
 }
 
 const initialChoice = readChoice()
