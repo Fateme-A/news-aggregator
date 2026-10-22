@@ -14,18 +14,23 @@ import { ALL_SOURCE_IDS } from '@/sources/registry'
 
 export type FeedMode = 'explore' | 'my-feed'
 
+/** Pages keeps Previous and Next. Infinite appends the next page as you scroll. */
+export type BrowseMode = 'pages' | 'infinite'
+
 export interface PreferencesState {
   /** Providers to query. Empty is treated as "none selected" and shows a prompt. */
   sources: SourceId[]
   categories: Category[]
   authors: string[]
   mode: FeedMode
+  browseMode: BrowseMode
 
   toggleSource: (id: SourceId) => void
   toggleCategory: (category: Category) => void
   addAuthor: (author: string) => void
   removeAuthor: (author: string) => void
   setMode: (mode: FeedMode) => void
+  setBrowseMode: (mode: BrowseMode) => void
   reset: () => void
   /** True once the user has expressed any preference at all. */
   hasPreferences: () => boolean
@@ -36,6 +41,7 @@ const INITIAL = {
   categories: [] as Category[],
   authors: [] as string[],
   mode: 'explore' as FeedMode,
+  browseMode: 'pages' as BrowseMode,
 }
 
 function toggle<T>(list: T[], value: T): T[] {
@@ -63,6 +69,7 @@ export const usePreferences = create<PreferencesState>()(
         set((state) => ({ authors: state.authors.filter((a) => a !== author) })),
 
       setMode: (mode) => set({ mode }),
+      setBrowseMode: (browseMode) => set({ browseMode }),
       reset: () => set({ ...INITIAL }),
 
       hasPreferences: () => {
@@ -75,11 +82,12 @@ export const usePreferences = create<PreferencesState>()(
     {
       name: 'newsstand.preferences.v1',
       // Actions are recreated on every load; only data is worth persisting.
-      partialize: ({ sources, categories, authors, mode }) => ({
+      partialize: ({ sources, categories, authors, mode, browseMode }) => ({
         sources,
         categories,
         authors,
         mode,
+        browseMode,
       }),
     },
   ),

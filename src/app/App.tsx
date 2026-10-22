@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
-import type { Category, SourceId } from '@/domain/article'
+import type { Article, Category, SourceId } from '@/domain/article'
 import { DEFAULT_PAGE_SIZE, type ArticleQuery } from '@/domain/query'
 import { DataModeBar } from '@/features/data-mode/DataModeBar'
 import { ArticleGrid } from '@/features/feed/ArticleGrid'
+import { BrowseModeSwitch } from '@/features/feed/BrowseModeSwitch'
 import {
   AllFailedState,
   EmptyState,
@@ -18,10 +19,11 @@ import { SearchBar } from '@/features/search/SearchBar'
 import { useArticles } from '@/hooks/useArticles'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useSourceAvailability } from '@/hooks/useSourceAvailability'
+import { mergeArticles } from '@/lib/dedupe'
 import { pluralize } from '@/lib/text'
 import { ALL_SOURCE_IDS } from '@/sources/registry'
 import { useDataMode } from '@/store/data-mode'
-import type { FeedMode } from '@/store/preferences'
+import type { BrowseMode, FeedMode } from '@/store/preferences'
 import { usePreferences } from '@/store/preferences'
 import { useTheme } from '@/store/theme'
 import {
@@ -31,7 +33,7 @@ import {
   IconStar,
   IconSun,
 } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const FEED_MODES = [
   { value: 'explore', label: 'Explore' },
@@ -45,6 +47,11 @@ export function App() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [accumulated, setAccumulated] = useState<Article[]>([])
+  const [exhausted, setExhausted] = useState(false)
+  const articlesRef = useRef<Article[]>([])
+  const accumulatedRef = useRef<Article[]>([])
+  const exhaustedRef = useRef(false)
 
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [preferencesOpen, setPreferencesOpen] = useState(false)
@@ -83,6 +90,72 @@ export function App() {
     isResolvingMode,
   } = useArticles(query, activeSources, activeSources.length > 0)
 
+  const browseMode = preferences.browseMode
+  const dataPreference = useDataMode((state) => state.preference)
+  const feedKey = [
+    debouncedKeyword,
+    activeCategories.join(','),
+    activeAuthors.join(','),
+    activeSources.join(','),
+    isMyFeed ? '' : dateFrom,
+    isMyFeed ? '' : dateTo,
+    isMyFeed,
+    dataPreference,
+  ].join('|')
+  const articleSignature = articles.map((article) => article.id).join('\n')
+  articlesRef.current = articles
+  accumulatedRef.current = accumulated
+
+  const shownArticles = browseMode === 'infinite' ? accumulated : articles
+  const waitingForFirstPage = shownArticles.length === 0 && (isLoading || isResolvingMode)
+  const canLoadMore = hasMore && !exhausted
+
+  useEffect(() => {
+    if (browseMode !== 'infinite') return
+    if (isLoading) {
+      if (page === 1) setAccumulated([])
+      return
+    }
+    const next = articlesRef.current
+    if (page === 1) {
+      exhaustedRef.current = false
+      setExhausted(false)
+      setAccumulated(next)
+      return
+    }
+    const merged = mergeArticles([accumulatedRef.current, next])
+    if (merged.length === accumulatedRef.current.length) {
+      exhaustedRef.current = true
+      setExhausted(true)
+    }
+    setAccumulated(merged)
+  }, [browseMode, page, isLoading, articleSignature, feedKey])
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (
+      browseMode !== 'infinite' ||
+      !canLoadMore ||
+      exhaustedRef.current ||
+      isFetching ||
+      isLoading
+    )
+      return
+    const node = sentinelRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return
+        setPage((current) => (current >= 25 ? current : current + 1))
+      },
+      { rootMargin: '240px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [browseMode, canLoadMore, isFetching, isLoading, page, shownArticles.length])
+
   function resetToFirstPage<T>(setter: (value: T) => void) {
     return (value: T) => {
       setter(value)
@@ -118,6 +191,15 @@ export function App() {
   function goToPage(next: number) {
     setPage(next)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function changeBrowseMode(mode: BrowseMode) {
+    if (mode === browseMode) return
+    preferences.setBrowseMode(mode)
+    setPage(1)
+    setAccumulated([])
+    exhaustedRef.current = false
+    setExhausted(false)
   }
 
   function renderFilterPanel(idPrefix: string) {
@@ -247,7 +329,7 @@ export function App() {
           <div className="mb-4 flex items-center justify-between gap-4 lg:mb-5">
             <nav
               aria-label="Feed mode"
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-canvas/95 px-4 pt-2.5 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-canvas/95 px-4 pt-2.5 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:inset-auto lg:z-auto lg:mr-auto lg:w-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
             >
               <SegmentedControl
                 aria-label="Feed mode"
@@ -262,9 +344,9 @@ export function App() {
               />
             </nav>
 
-            {hasSources && !isLoading && articles.length > 0 && (
-              <p className="text-[13px] text-muted" role="status">
-                {pluralize(articles.length, 'article')}
+            {hasSources && shownArticles.length > 0 && (
+              <p className="mr-auto text-[13px] text-muted lg:mr-0" role="status">
+                {pluralize(shownArticles.length, 'article')}
                 {debouncedKeyword && (
                   <>
                     {' for '}
@@ -273,6 +355,12 @@ export function App() {
                 )}
               </p>
             )}
+
+            <BrowseModeSwitch
+              value={browseMode}
+              onChange={changeBrowseMode}
+              className={hasSources && shownArticles.length > 0 ? undefined : 'ml-auto'}
+            />
           </div>
 
           {isMyFeed && (
@@ -303,33 +391,47 @@ export function App() {
 
           {!hasSources ? (
             <NoSourcesState />
-          ) : isLoading ? (
+          ) : waitingForFirstPage ? (
             <FeedSkeleton />
-          ) : allFailed ? (
+          ) : allFailed && shownArticles.length === 0 ? (
             <AllFailedState failures={failures} />
-          ) : articles.length === 0 ? (
+          ) : shownArticles.length === 0 ? (
             <EmptyState onReset={resetFilters} />
           ) : (
             <>
-              <ArticleGrid articles={articles} />
+              <ArticleGrid articles={shownArticles} />
 
-              <nav
-                aria-label="Pagination"
-                className="mt-8 flex items-center justify-center gap-2 sm:mt-10"
-              >
-                <Button
-                  disabled={page === 1 || isFetching}
-                  onClick={() => goToPage(Math.max(1, page - 1))}
+              {browseMode === 'pages' ? (
+                <nav
+                  aria-label="Pagination"
+                  className="mt-8 flex items-center justify-center gap-2 sm:mt-10"
                 >
-                  Previous
-                </Button>
-                <span className="min-w-20 text-center text-[13px] text-muted" aria-current="page">
-                  Page {page}
-                </span>
-                <Button disabled={!hasMore || isFetching} onClick={() => goToPage(page + 1)}>
-                  Next
-                </Button>
-              </nav>
+                  <Button
+                    disabled={page === 1 || isFetching}
+                    onClick={() => goToPage(Math.max(1, page - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="min-w-20 text-center text-[13px] text-muted" aria-current="page">
+                    Page {page}
+                  </span>
+                  <Button disabled={!hasMore || isFetching} onClick={() => goToPage(page + 1)}>
+                    Next
+                  </Button>
+                </nav>
+              ) : (
+                <div ref={sentinelRef} className="mt-8 flex justify-center sm:mt-10">
+                  {isFetching ? (
+                    <p role="status" className="text-[13px] text-muted">
+                      Loading more articles
+                    </p>
+                  ) : canLoadMore ? (
+                    <span className="sr-only">More articles load as you reach the end</span>
+                  ) : (
+                    <p className="text-[13px] text-subtle">End of the feed</p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </main>

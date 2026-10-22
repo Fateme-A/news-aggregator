@@ -249,6 +249,45 @@ describe('App', () => {
     })
   })
 
+  describe('browsing mode', () => {
+    it('loads the next page when infinite scroll is selected', async () => {
+      const user = userEvent.setup()
+      class ImmediateObserver {
+        constructor(private readonly callback: IntersectionObserverCallback) {}
+        observe() {
+          this.callback(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          )
+        }
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return []
+        }
+      }
+      vi.stubGlobal('IntersectionObserver', ImmediateObserver)
+
+      const { requests } = mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      const firstPage = requests.length
+
+      await user.click(screen.getByRole('button', { name: 'Infinite' }))
+
+      await waitFor(() => {
+        expect(requests.some((url) => /[?&]page=2(?:&|$)/.test(url))).toBe(true)
+      })
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+      expect(requests.length).toBeGreaterThan(firstPage)
+
+      await user.click(screen.getByRole('button', { name: 'Pages' }))
+      expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument()
+      expect(usePreferences.getState().browseMode).toBe('pages')
+    })
+  })
+
   describe('live and demo data', () => {
     it('serves the recorded sample without calling the network in demo mode', async () => {
       useDataMode.getState().setPreference('demo')
