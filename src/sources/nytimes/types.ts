@@ -1,7 +1,7 @@
 /**
  * NYT Article Search v2 wire format.
  *
- * Derived from a recorded live response (`src/test/fixtures/nyt-search.json`).
+ * Derived from a recorded live response (`src/samples/nyt-search.json`).
  * Note that the current shape differs from much of the published documentation:
  * `multimedia` is an object keyed by rendition (not an array of path fragments),
  * its URLs are already absolute, and pagination metadata lives under
@@ -38,8 +38,13 @@ export interface NytDoc {
 
 export interface NytSearchResponse {
   status: string
-  response: {
-    docs: NytDoc[]
-    metadata?: { hits?: number; offset?: number; time?: number }
-  }
+  /**
+   * `docs` is `null`, not `[]`, whenever the query matches nothing — confirmed
+   * against the live API. Typing it as a bare array would have been a lie the
+   * adapter was quietly compensating for with `?? []`.
+   */
+  response?: {
+    docs: NytDoc[] | null
+    metadata?: { hits?: number; offset?: number; time?: number } | null
+  } | null
 }

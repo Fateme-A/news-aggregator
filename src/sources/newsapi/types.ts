@@ -1,7 +1,7 @@
 /**
  * NewsAPI.org wire format.
  *
- * Derived from recorded live responses (`src/test/fixtures/newsapi-*.json`).
+ * Derived from recorded live responses (`src/samples/newsapi-*.json`).
  * `/everything` and `/top-headlines` return an identical article shape, which is
  * what lets one mapper serve both endpoints.
  */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import everything from '@/test/fixtures/newsapi-everything.json'
-import topHeadlines from '@/test/fixtures/newsapi-topheadlines.json'
+import everything from '@/samples/newsapi-everything.json'
+import topHeadlines from '@/samples/newsapi-topheadlines.json'
 import { isUsable, toArticle } from './mapper'
 import type { NewsApiArticle, NewsApiResponse } from './types'
 

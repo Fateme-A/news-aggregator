@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom/vitest'
+import { resetDeliveryState } from '@/sources/demo'
+import { useDataMode } from '@/store/data-mode'
 import { cleanup } from '@testing-library/react'
 import { afterEach, beforeEach } from 'vitest'
-import { useDataMode } from '@/store/data-mode'
 
 /**
  * jsdom's own `localStorage` is unavailable under this Node version (it warns
@@ -47,6 +48,9 @@ beforeEach(() => {
   // assert on. Live is the explicit "always call the API" path.
   useDataMode.getState().setPreference('live')
   useDataMode.getState().setAvailability('unknown')
+  // The delivery log and the rate-limit breaker are module state shared by
+  // every test in a file; reset them so one test cannot bleed into the next.
+  resetDeliveryState()
 })
 
 afterEach(() => {

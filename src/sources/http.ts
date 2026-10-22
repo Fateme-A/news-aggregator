@@ -1,13 +1,6 @@
 import type { SourceId } from '@/domain/article'
-import { NewsSourceError } from '@/domain/news-source'
-import {
-  demoPayload,
-  keyIsMissing,
-  noteDelivery,
-  recoverDemoPayload,
-  suppressedReason,
-} from '@/sources/demo'
-import { useDataMode } from '@/store/data-mode'
+import { NewsSourceError, type FetchContext } from '@/domain/news-source'
+import { demoPayload, noteDelivery, planDelivery, planRecovery } from '@/sources/demo'
 
 const DEFAULT_TIMEOUT_MS = 10_000
 
@@ -32,22 +25,24 @@ function classify(status: number): NewsSourceError['kind'] {
   return 'unknown'
 }
 
+/**
+ * The one place a request leaves the app.
+ *
+ * Owns transport concerns only — timeout, cancellation, status-to-error mapping,
+ * and handing off to the recorded sample when the caller's `FetchContext` says
+ * to. It reads no store and no environment: everything it needs about *how* to
+ * serve the request arrives as an argument.
+ */
 export async function fetchJson<T>(
   sourceId: SourceId,
   url: string,
-  signal?: AbortSignal,
+  context: FetchContext,
 ): Promise<T> {
-  const preference = useDataMode.getState().preference
-
-  if (preference === 'demo') return demoPayload<T>(sourceId, url, signal, 'chosen')
-  if (preference === 'auto' && keyIsMissing(sourceId)) {
-    return demoPayload<T>(sourceId, url, signal, 'missing-key')
-  }
-  const blocked = suppressedReason(sourceId)
-  if (blocked) return demoPayload<T>(sourceId, url, signal, blocked)
+  const plan = planDelivery(sourceId, context)
+  if (plan !== 'live') return demoPayload<T>(sourceId, url, plan, context.signal)
 
   const timeout = AbortSignal.timeout(DEFAULT_TIMEOUT_MS)
-  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout
+  const combined = context.signal ? AbortSignal.any([context.signal, timeout]) : timeout
 
   let response: Response
   try {
@@ -56,7 +51,7 @@ export async function fetchJson<T>(
       headers: { Accept: 'application/json' },
     })
   } catch (cause) {
-    if (signal?.aborted) throw cause
+    if (context.signal?.aborted) throw cause
     throw new NewsSourceError(sourceId, `Request to ${sourceId} failed`, 'network', { cause })
   }
 
@@ -66,8 +61,8 @@ export async function fetchJson<T>(
       `${sourceId} responded ${response.status} ${response.statusText}`,
       classify(response.status),
     )
-    const recovered = recoverDemoPayload<T>(sourceId, url, error)
-    if (recovered) return recovered
+    const recovery = planRecovery(context, error)
+    if (recovery) return demoPayload<T>(sourceId, url, recovery)
     throw error
   }
 

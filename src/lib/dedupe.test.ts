@@ -32,10 +32,60 @@ describe('dedupeArticles', () => {
 
   it('collapses the same headline published at different URLs', () => {
     const result = dedupeArticles([
-      article({ id: 'a', title: 'Climate deal reached', url: 'https://one.com/x' }),
-      article({ id: 'b', title: 'Climate Deal Reached!', url: 'https://two.com/y' }),
+      article({
+        id: 'a',
+        title: 'Climate deal reached',
+        url: 'https://one.com/x',
+        publishedAt: '2026-01-01T09:00:00Z',
+      }),
+      article({
+        id: 'b',
+        title: 'Climate Deal Reached!',
+        url: 'https://two.com/y',
+        publishedAt: '2026-01-01T14:30:00Z',
+      }),
     ])
     expect(result).toHaveLength(1)
+  })
+
+  it('still collapses a syndicated copy that lands the next day', () => {
+    // A wire story reaching a second outlet overnight must not survive as a
+    // separate card just because it crossed a bucket boundary.
+    const result = dedupeArticles([
+      article({
+        id: 'a',
+        title: 'Climate deal reached',
+        url: 'https://one.com/x',
+        publishedAt: '2026-01-01T23:50:00Z',
+      }),
+      article({
+        id: 'b',
+        title: 'Climate deal reached',
+        url: 'https://two.com/y',
+        publishedAt: '2026-01-02T07:10:00Z',
+      }),
+    ])
+    expect(result).toHaveLength(1)
+  })
+
+  it('keeps a recurring headline published months apart', () => {
+    // "Morning briefing" and weekly column titles repeat forever. Matching on
+    // the title alone would collapse a year of coverage into one card.
+    const result = dedupeArticles([
+      article({
+        id: 'jan',
+        title: 'Morning briefing',
+        url: 'https://one.com/jan',
+        publishedAt: '2026-01-01T06:00:00Z',
+      }),
+      article({
+        id: 'jun',
+        title: 'Morning briefing',
+        url: 'https://one.com/jun',
+        publishedAt: '2026-06-01T06:00:00Z',
+      }),
+    ])
+    expect(result).toHaveLength(2)
   })
 
   it('ignores an appended outlet suffix when comparing headlines', () => {
@@ -87,13 +137,13 @@ describe('mergeArticles', () => {
 
   it('keeps the freshest copy when the same story is duplicated', () => {
     const merged = mergeArticles([
-      [article({ id: 'stale', title: 'Same story', publishedAt: '2026-01-01T00:00:00Z' })],
+      [article({ id: 'stale', title: 'Same story', publishedAt: '2026-01-01T02:00:00Z' })],
       [
         article({
           id: 'fresh',
           title: 'Same story',
           url: 'https://other.com/s',
-          publishedAt: '2026-06-01T00:00:00Z',
+          publishedAt: '2026-01-01T20:00:00Z',
         }),
       ],
     ])

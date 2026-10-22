@@ -8,6 +8,11 @@ import type { NytDoc } from './types'
  * Same single-table pattern as the Guardian mapper: the reverse lookup is
  * derived, never written twice. Desk names are matched case-insensitively
  * because the NYT is inconsistent about casing ("OpEd", "Foreign", "RealEstate").
+ *
+ * This table is now used in one direction only. It used to build an `fq` clause
+ * as well, but that parameter returns nothing on the free tier (see
+ * `adapter.ts`), so the NYT declares `categoryFilter: false` and `useArticles`
+ * matches on the category this mapper assigns instead.
  */
 export const CATEGORY_TO_DESKS: Record<Category, string[]> = {
   business: ['Business', 'BusinessDay', 'Financial', 'RealEstate', 'Jobs'],
@@ -40,29 +45,6 @@ const DESK_TO_CATEGORY: ReadonlyMap<string, Category> = new Map(
 export function deskToCategory(desk: string | undefined): Category {
   if (!desk) return 'general'
   return DESK_TO_CATEGORY.get(desk.toLowerCase()) ?? 'general'
-}
-
-/**
- * Build the NYT `fq` (filter query) clause, which uses Lucene syntax.
- * Values are quoted so that multi-word desks such as `"Personal Tech"` survive.
- */
-export function buildFilterQuery(categories: Category[], authors: string[]): string | undefined {
-  const clauses: string[] = []
-
-  if (categories.length > 0) {
-    const desks = categories.flatMap((category) => CATEGORY_TO_DESKS[category])
-    clauses.push(`news_desk:(${desks.map((d) => `"${d}"`).join(' ')})`)
-  }
-
-  if (authors.length > 0) {
-    clauses.push(`byline:(${authors.map((a) => `"${escapeLucene(a)}"`).join(' ')})`)
-  }
-
-  return clauses.length > 0 ? clauses.join(' AND ') : undefined
-}
-
-function escapeLucene(value: string): string {
-  return value.replace(/["\\]/g, '\\$&')
 }
 
 /** NYT dates are `YYYYMMDD`; our domain uses `YYYY-MM-DD`. */

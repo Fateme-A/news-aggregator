@@ -29,10 +29,29 @@ function titleKey(title: string): string {
 }
 
 /**
+ * Two articles with the same headline are the same story only if they were
+ * published at roughly the same time. Without this window, recurring headlines
+ * — "Morning briefing", "What we know so far", a weekly column title — would
+ * collapse months of coverage into a single card.
+ */
+const SAME_STORY_WINDOW_MS = 48 * 60 * 60 * 1000
+
+/** The day-bucket a title key is scoped to, so near-in-time copies still match. */
+function titleBucket(iso: string): string {
+  const time = Date.parse(iso)
+  if (Number.isNaN(time)) return 'undated'
+  return String(Math.floor(time / SAME_STORY_WINDOW_MS))
+}
+
+/**
  * Removes duplicates, keeping the first occurrence.
  *
  * Callers sort before deduping so that "first" is the preferred copy — see
  * `mergeArticles`, which orders by recency so the freshest version survives.
+ *
+ * A URL match is conclusive on its own. A title match is not, so it is scoped
+ * to a 48-hour window and checked against the adjacent bucket as well, which
+ * stops a story that straddles a bucket boundary from slipping through.
  */
 export function dedupeArticles(articles: Article[]): Article[] {
   const seen = new Set<string>()
@@ -41,12 +60,20 @@ export function dedupeArticles(articles: Article[]): Article[] {
   for (const article of articles) {
     const byUrl = urlKey(article.url)
     const byTitle = titleKey(article.title)
+    const bucket = Number(titleBucket(article.publishedAt))
 
-    // An empty title key would collapse unrelated untitled items together.
-    const keys = [byUrl && `u:${byUrl}`, byTitle && `t:${byTitle}`].filter(Boolean) as string[]
+    const lookups: string[] = []
+    if (byUrl) lookups.push(`u:${byUrl}`)
+    if (byTitle) {
+      // An empty title key would collapse unrelated untitled items together.
+      if (Number.isNaN(bucket)) lookups.push(`t:${byTitle}:undated`)
+      else lookups.push(`t:${byTitle}:${bucket}`, `t:${byTitle}:${bucket - 1}`)
+    }
 
-    if (keys.some((key) => seen.has(key))) continue
-    for (const key of keys) seen.add(key)
+    if (lookups.some((key) => seen.has(key))) continue
+
+    if (byUrl) seen.add(`u:${byUrl}`)
+    if (byTitle) seen.add(Number.isNaN(bucket) ? `t:${byTitle}:undated` : `t:${byTitle}:${bucket}`)
     result.push(article)
   }
 

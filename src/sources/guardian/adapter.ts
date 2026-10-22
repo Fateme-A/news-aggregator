@@ -1,5 +1,5 @@
 import { CATEGORIES } from '@/domain/article'
-import type { NewsSource } from '@/domain/news-source'
+import type { FetchContext, NewsSource, SourceCapabilities } from '@/domain/news-source'
 import type { ArticlePage, ArticleQuery } from '@/domain/query'
 import { apiBase, buildQuery, fetchJson } from '@/sources/http'
 import { sectionsParam, toArticle } from './mapper'
@@ -16,16 +16,18 @@ export const guardianSource: NewsSource = {
   id: 'guardian',
   label: 'The Guardian',
 
-  capabilities: {
+  // The only provider of the three that honours every filter server-side, for
+  // any combination of them. Verified against the live API.
+  capabilities: (): SourceCapabilities => ({
     authorFilter: true,
     categoryFilter: true,
     dateRangeFilter: true,
-  },
+  }),
 
   // The section mapping covers every canonical category.
   supportedCategories: CATEGORIES,
 
-  async fetchArticles(query: ArticleQuery, signal?: AbortSignal): Promise<ArticlePage> {
+  async fetchArticles(query: ArticleQuery, context: FetchContext): Promise<ArticlePage> {
     const search = buildQuery({
       // The Guardian rejects an empty `q`; omitting it returns the latest instead,
       // which is exactly the behaviour we want for an unfiltered feed.
@@ -47,7 +49,7 @@ export const guardianSource: NewsSource = {
     const data = await fetchJson<GuardianSearchResponse>(
       'guardian',
       `${apiBase('guardian')}/search${search}`,
-      signal,
+      context,
     )
 
     const { results, total, currentPage, pages } = data.response

@@ -15,16 +15,16 @@ interface PreferencesDialogProps {
 }
 
 export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps) {
-  const {
-    sources,
-    categories,
-    authors,
-    toggleSource,
-    toggleCategory,
-    addAuthor,
-    removeAuthor,
-    reset,
-  } = usePreferences()
+  // Selectors rather than the whole store: an unselected `usePreferences()`
+  // re-renders this dialog on every unrelated preference change.
+  const sources = usePreferences((state) => state.sources)
+  const categories = usePreferences((state) => state.categories)
+  const authors = usePreferences((state) => state.authors)
+  const toggleSource = usePreferences((state) => state.toggleSource)
+  const toggleCategory = usePreferences((state) => state.toggleCategory)
+  const addAuthor = usePreferences((state) => state.addAuthor)
+  const removeAuthor = usePreferences((state) => state.removeAuthor)
+  const reset = usePreferences((state) => state.reset)
   const [authorDraft, setAuthorDraft] = useState('')
 
   function handleAddAuthor(event: FormEvent) {
@@ -97,7 +97,7 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
             </Button>
           </form>
 
-          {authors.length > 0 ? (
+          {authors.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
               {authors.map((author) => (
                 <li key={author} className="min-w-0">
@@ -115,11 +115,13 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-3 text-xs leading-relaxed text-subtle">
-              NewsAPI cannot filter by author upstream, so its results are narrowed in the browser.
-            </p>
           )}
+
+          <p className="mt-3 text-xs leading-relaxed text-subtle">
+            {authors.length > 0
+              ? 'The New York Times and NewsAPI cannot filter by author upstream, so their results are narrowed in the browser.'
+              : 'Add an author to narrow My Feed to their work.'}
+          </p>
         </Group>
       </div>
     </Dialog>

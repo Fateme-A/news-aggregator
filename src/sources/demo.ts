@@ -1,19 +1,46 @@
 import type { Article, SourceId } from '@/domain/article'
-import type { NewsSourceError } from '@/domain/news-source'
+import type {
+  DataMode,
+  Delivery,
+  DemoReason,
+  FetchContext,
+  NewsSourceError,
+} from '@/domain/news-source'
 import type { ArticleQuery } from '@/domain/query'
 import { normaliseAuthor } from '@/lib/text'
-import { useDataMode, type Delivery, type DemoReason } from '@/store/data-mode'
-import guardianFixture from '@/test/fixtures/guardian-search.json'
-import newsapiEverythingFixture from '@/test/fixtures/newsapi-everything.json'
-import newsapiHeadlinesFixture from '@/test/fixtures/newsapi-topheadlines.json'
-import nytFixture from '@/test/fixtures/nyt-search.json'
+import guardianSample from '@/samples/guardian-search.json'
+import newsapiEverythingSample from '@/samples/newsapi-everything.json'
+import newsapiHeadlinesSample from '@/samples/newsapi-topheadlines.json'
+import nytSample from '@/samples/nyt-search.json'
+
+/**
+ * Serving recorded samples when a provider cannot be called.
+ *
+ * Two pieces of module state, both deliberately transport-level rather than
+ * application-level:
+ *
+ * - `deliveries` records what each source last returned, so the UI can say
+ *   "sample articles for The Guardian (no API key is configured)".
+ * - `suppressed` is a circuit breaker. Once a provider has answered 429 or 401
+ *   in Auto mode there is no point spending more of a 100-request daily budget
+ *   on it, so subsequent calls go straight to the sample until the reader
+ *   changes mode.
+ *
+ * Neither reads a store: the mode arrives in `FetchContext`, resolved by
+ * `useArticles`. That keeps `sources/` free of application state and makes all
+ * of this testable by passing a value.
+ */
 
 const deliveries = new Map<SourceId, Delivery>()
 const suppressed = new Map<SourceId, DemoReason>()
+let lastMode: DataMode | undefined
 
-useDataMode.subscribe((state, previous) => {
-  if (state.preference !== previous.preference) suppressed.clear()
-})
+/** A change of mode is the reader's cue that they want the breakers reset. */
+function syncMode(mode: DataMode): void {
+  if (mode === lastMode) return
+  lastMode = mode
+  suppressed.clear()
+}
 
 export function noteDelivery(sourceId: SourceId, delivery: Delivery): void {
   deliveries.set(sourceId, delivery)
@@ -21,6 +48,13 @@ export function noteDelivery(sourceId: SourceId, delivery: Delivery): void {
 
 export function readDelivery(sourceId: SourceId): Delivery {
   return deliveries.get(sourceId) ?? { origin: 'live' }
+}
+
+/** Test seam: the maps outlive a single render by design, so tests must reset them. */
+export function resetDeliveryState(): void {
+  deliveries.clear()
+  suppressed.clear()
+  lastMode = undefined
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -31,36 +65,55 @@ function throwIfAborted(signal?: AbortSignal): void {
     : new DOMException('The operation was aborted.', 'AbortError')
 }
 
-function fixtureFor(sourceId: SourceId, url: string): unknown {
-  if (sourceId === 'guardian') return guardianFixture
-  if (sourceId === 'nytimes') return nytFixture
-  return url.includes('top-headlines') ? newsapiHeadlinesFixture : newsapiEverythingFixture
+function sampleFor(sourceId: SourceId, url: string): unknown {
+  if (sourceId === 'guardian') return guardianSample
+  if (sourceId === 'nytimes') return nytSample
+  return url.includes('top-headlines') ? newsapiHeadlinesSample : newsapiEverythingSample
 }
 
-export function keyIsMissing(sourceId: SourceId): boolean {
-  const availability = useDataMode.getState().availability
-  if (availability === 'pending' || availability === 'unknown') return false
-  return availability[sourceId] === false
+/**
+ * Decide how this request should be served, before any network call.
+ *
+ * Returns `'live'` to go to the network, or the reason to serve the sample.
+ */
+export function planDelivery(sourceId: SourceId, context: FetchContext): 'live' | DemoReason {
+  syncMode(context.mode)
+
+  if (context.mode === 'demo') return 'chosen'
+  if (context.mode === 'live') return 'live'
+
+  // Auto: skip providers with no key, and providers already known to be refusing.
+  if (context.configured?.[sourceId] === false) return 'missing-key'
+  return suppressed.get(sourceId) ?? 'live'
 }
 
-export function suppressedReason(sourceId: SourceId): DemoReason | undefined {
-  if (useDataMode.getState().preference !== 'auto') return undefined
-  return suppressed.get(sourceId)
+/** Whether a live failure may fall back to the sample, and why. */
+export function planRecovery(context: FetchContext, error: NewsSourceError): DemoReason | null {
+  if (context.mode !== 'auto') return null
+  if (error.kind !== 'rate-limited' && error.kind !== 'auth') return null
+  return error.kind
 }
 
 export function demoPayload<T>(
   sourceId: SourceId,
   url: string,
-  signal: AbortSignal | undefined,
   reason: DemoReason,
+  signal?: AbortSignal,
 ): T {
   throwIfAborted(signal)
   if (reason === 'rate-limited' || reason === 'auth') suppressed.set(sourceId, reason)
   noteDelivery(sourceId, { origin: 'demo', reason })
-  return fixtureFor(sourceId, url) as T
+  return sampleFor(sourceId, url) as T
 }
 
-export function narrowDemoArticles(articles: readonly Article[], query: ArticleQuery): Article[] {
+/**
+ * Apply the query to a recorded page in the browser.
+ *
+ * The sample is one fixed page, so a search can only surface stories that are
+ * already in the recording. Narrowing it is what stops Demo mode from looking
+ * like the filters are broken.
+ */
+export function narrowSample(articles: readonly Article[], query: ArticleQuery): Article[] {
   const keyword = query.keyword.trim().toLowerCase()
   const wantedAuthors = query.authors.map(normaliseAuthor)
 
@@ -90,14 +143,4 @@ export function narrowDemoArticles(articles: readonly Article[], query: ArticleQ
 
     return true
   })
-}
-
-export function recoverDemoPayload<T>(
-  sourceId: SourceId,
-  url: string,
-  error: NewsSourceError,
-): T | null {
-  if (useDataMode.getState().preference !== 'auto') return null
-  if (error.kind !== 'rate-limited' && error.kind !== 'auth') return null
-  return demoPayload<T>(sourceId, url, undefined, error.kind)
 }

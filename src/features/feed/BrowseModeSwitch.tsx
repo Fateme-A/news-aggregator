@@ -20,7 +20,9 @@ export function BrowseModeSwitch({
       role="group"
       aria-label="Browsing"
       className={cn(
-        'inline-flex h-8 shrink-0 items-center gap-0.5 rounded-full bg-surface-muted p-0.5 ring-1 ring-border ring-inset',
+        // 44px on touch — 40px segments inside a 44px track — shrinking to 32px
+        // only from `lg`, where a precise cursor is available.
+        'inline-flex h-11 shrink-0 items-center gap-0.5 rounded-full bg-surface-muted p-0.5 ring-1 ring-border ring-inset lg:h-8',
         className,
       )}
     >
@@ -34,7 +36,7 @@ export function BrowseModeSwitch({
             aria-pressed={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              'h-7 rounded-full px-2.5 text-xs font-medium whitespace-nowrap',
+              'h-10 rounded-full px-3 text-xs font-medium whitespace-nowrap lg:h-7 lg:px-2.5',
               'transition-all duration-200',
               active
                 ? 'bg-surface text-ink shadow-subtle'

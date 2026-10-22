@@ -1,7 +1,7 @@
 /**
  * The Guardian Content API wire format.
  *
- * Hand-written from a recorded live response (`src/test/fixtures/guardian-search.json`)
+ * Hand-written from a recorded live response (`src/samples/guardian-search.json`)
  * rather than from the docs, so the optionality below reflects what the API
  * actually sends. Nothing outside this folder imports these types.
  */

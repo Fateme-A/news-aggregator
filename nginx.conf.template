@@ -7,8 +7,17 @@
 # $variables below survive untouched. The keys therefore arrive as runtime
 # environment variables and are never baked into the image.
 
+# A small shared response cache in front of the providers.
+#
+# TanStack Query already caches per tab, which does nothing for a second tab, a
+# hard refresh, or a second person opening the same container — and NewsAPI's
+# free tier allows 100 requests a day in total. Five minutes here matches the
+# client's `staleTime`, so the two layers expire together.
+proxy_cache_path /var/cache/nginx/news levels=1:2 keys_zone=news:10m
+                 max_size=64m inactive=30m use_temp_path=off;
+
 server {
-    listen       80;
+    listen       8080;
     server_name  _;
 
     root  /usr/share/nginx/html;
@@ -34,6 +43,11 @@ server {
     #      origins only, so a deployed page cannot reach it directly.
     #   2. Keys stay server-side and never enter the JS bundle.
     #
+    # Each endpoint is matched exactly (`location =`) rather than by prefix.
+    # A prefix would turn this container into an open relay: anyone who could
+    # reach it could spend the key on any path the upstream exposes. The app
+    # calls exactly three endpoints, so exactly three are forwarded.
+    #
     # Each block appends its credential to $args and rewrites the path, rather
     # than interpolating variables into proxy_pass. That is deliberate: a
     # proxy_pass containing variables defers DNS to request time and then needs
@@ -41,8 +55,28 @@ server {
     # nginx resolves each upstream once at startup using the container's own
     # resolver.
 
+    # The cache key deliberately excludes the credential, so every visitor
+    # shares one entry rather than one per key.
+    proxy_cache            news;
+    proxy_cache_key        "$uri?$args";
+
+    # The Guardian answers `Cache-Control: max-age=0` and sets an AWS
+    # load-balancer affinity cookie. Both would stop nginx caching: the first by
+    # instruction, the second because a Set-Cookie response is per-visitor by
+    # definition. Neither is meaningful to this app — the content is public and
+    # the cookie is upstream's own session affinity — so ignore them here and
+    # strip the cookie on the way out rather than forwarding one visitor's
+    # affinity token to everybody.
+    proxy_ignore_headers   Cache-Control Expires Set-Cookie;
+    proxy_hide_header      Set-Cookie;
+    proxy_cache_valid      200 5m;
+    proxy_cache_valid      429 401 403 30s;
+    proxy_cache_use_stale  error timeout updating http_429 http_500 http_502 http_503 http_504;
+    proxy_cache_lock       on;
+    add_header             X-Cache-Status $upstream_cache_status always;
+
     # /api/guardian/search?q=x -> https://content.guardianapis.com/search?q=x&api-key=...
-    location /api/guardian/ {
+    location = /api/guardian/search {
         set $args             "$args&api-key=${GUARDIAN_KEY}";
         rewrite               ^/api/guardian/(.*)$ /$1 break;
         proxy_pass            https://content.guardianapis.com;
@@ -52,7 +86,7 @@ server {
     }
 
     # /api/nyt/articlesearch.json -> https://api.nytimes.com/svc/search/v2/articlesearch.json?...
-    location /api/nyt/ {
+    location = /api/nyt/articlesearch.json {
         set $args             "$args&api-key=${NYT_KEY}";
         rewrite               ^/api/nyt/(.*)$ /svc/search/v2/$1 break;
         proxy_pass            https://api.nytimes.com;
@@ -62,7 +96,8 @@ server {
     }
 
     # NewsAPI takes its key as a header, keeping it out of upstream access logs.
-    location /api/newsapi/ {
+    # Two endpoints: /everything for keyword and date, /top-headlines for category.
+    location ~ ^/api/newsapi/(everything|top-headlines)$ {
         rewrite               ^/api/newsapi/(.*)$ /v2/$1 break;
         proxy_pass            https://newsapi.org;
         proxy_ssl_server_name on;
@@ -73,12 +108,24 @@ server {
         proxy_set_header      User-Agent "newsstand/1.0";
     }
 
+    # Anything else under /api/ is not something this app asks for.
+    location /api/ {
+        return 404;
+    }
+
     # --- Static assets ----------------------------------------------------
     # Hashed build output is immutable; index.html must never be cached, or a
     # returning visitor would keep booting a stale bundle.
     location /assets/ {
         expires    1y;
         add_header Cache-Control "public, immutable";
+    }
+
+    # Self-hosted webfonts are content-stable at a fixed path.
+    location /fonts/ {
+        expires    1y;
+        add_header Cache-Control "public, immutable";
+        types { font/woff2 woff2; }
     }
 
     location = /index.html {

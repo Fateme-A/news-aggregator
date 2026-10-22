@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import fixture from '@/test/fixtures/guardian-search.json'
+import fixture from '@/samples/guardian-search.json'
 import { CATEGORY_TO_SECTIONS, sectionToCategory, sectionsParam, toArticle } from './mapper'
 import type { GuardianResult, GuardianSearchResponse } from './types'
 

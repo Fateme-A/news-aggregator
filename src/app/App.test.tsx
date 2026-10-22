@@ -112,22 +112,32 @@ describe('App', () => {
   })
 
   describe('source filtering', () => {
-    it('stops querying a source when it is deselected', async () => {
+    it('stops querying a source, and drops its articles, when it is deselected', async () => {
       const user = userEvent.setup()
       const { requests } = mockApi()
       renderApp()
 
-      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      // A Guardian headline that is in the recorded sample and nowhere else.
+      await screen.findByText(/Energy secretary leaning towards rejecting Rosebank/i)
 
       await user.click(screen.getByRole('checkbox', { name: /the guardian/i }))
 
-      await waitFor(() => {
-        expect(usePreferences.getState().sources).toContain('guardian')
-      })
+      // The articles go…
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/Energy secretary leaning towards rejecting Rosebank/i),
+        ).not.toBeInTheDocument(),
+      )
+      // …the other sources stay…
+      expect(articleItems().length).toBeGreaterThan(0)
 
-      const countAfter = requests.filter((url) => url.includes('/api/guardian/')).length
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      expect(requests.filter((url) => url.includes('/api/guardian/')).length).toBe(countAfter)
+      // …and a subsequent search fans out to two providers, not three.
+      const before = requests.length
+      await user.type(screen.getByLabelText(/search articles/i), 'climate')
+      await waitFor(() => expect(requests.length).toBeGreaterThan(before), { timeout: 2000 })
+      const after = requests.slice(before)
+      expect(after.some((url) => url.includes('/api/nyt/'))).toBe(true)
+      expect(after.some((url) => url.includes('/api/guardian/'))).toBe(false)
     })
 
     it('prompts to pick a source when every source is deselected', async () => {
@@ -188,6 +198,136 @@ describe('App', () => {
       expect(personalised.some((url) => url.includes('technology'))).toBe(true)
       expect(personalised.some((url) => url.includes('from-date='))).toBe(false)
       expect(personalised.some((url) => url.includes('begin_date='))).toBe(false)
+    })
+  })
+
+  describe('category filtering', () => {
+    // These are the tests whose absence let two silent filter bugs ship: every
+    // earlier filter test asserted the outgoing URL and nothing about what came
+    // back, so a provider returning unfiltered results looked identical to one
+    // returning filtered results.
+
+    async function selectScience(user: ReturnType<typeof userEvent.setup>) {
+      // Two Science chips exist below `lg` (rail) and at `lg` (sidebar); the
+      // sidebar one is the desktop control jsdom reports first.
+      const chips = screen.getAllByRole('button', { name: /^science$/i })
+      await user.click(chips[0]!)
+    }
+
+    it('drops articles outside the selected category, including from providers that cannot filter upstream', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      // Present up front: a Real Estate piece (NYT desk RealEstate -> business)
+      // and a Guardian business column.
+      await screen.findByText(/Ready for High Water in Low-Lying Delaware/i)
+      await screen.findByText(/Jackdaw approval is a step towards a grownup North Sea policy/i)
+
+      await selectScience(user)
+
+      await waitFor(() => {
+        // The NYT ignores `fq` entirely, so this one can only disappear if
+        // useArticles re-applied the category in the browser.
+        expect(
+          screen.queryByText(/Ready for High Water in Low-Lying Delaware/i),
+        ).not.toBeInTheDocument()
+      })
+      // The Guardian filters by section upstream, so its off-category column goes too.
+      expect(
+        screen.queryByText(/Jackdaw approval is a step towards a grownup North Sea policy/i),
+      ).not.toBeInTheDocument()
+
+      // …and genuinely on-category stories survive from both.
+      expect(
+        screen.getByText(/Overlapping Plagues Are Killing American Forests/i),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(/Energy secretary leaning towards rejecting Rosebank oilfield/i),
+      ).toBeInTheDocument()
+    })
+
+    it('sends NewsAPI to /top-headlines so a keyword cannot cancel the category', async () => {
+      const user = userEvent.setup()
+      const { requests } = mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await selectScience(user)
+      await user.type(screen.getByLabelText(/search articles/i), 'climate')
+
+      await waitFor(
+        () => {
+          const headlines = requests.filter((url) => url.includes('/api/newsapi/top-headlines'))
+          expect(headlines.some((url) => url.includes('q=climate'))).toBe(true)
+        },
+        { timeout: 2000 },
+      )
+
+      // /everything has no category parameter, so a keyword must never move
+      // NewsAPI there while a category is selected.
+      const everything = requests.filter(
+        (url) => url.includes('/api/newsapi/everything') && url.includes('q=climate'),
+      )
+      expect(everything).toHaveLength(0)
+    })
+
+    it('discloses that a provider narrowed results in the browser', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await selectScience(user)
+
+      expect(
+        await screen.findByText(/cannot filter by category upstream, so its results are narrowed/i),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('author filtering', () => {
+    it('narrows My Feed to the preferred author across every provider', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+
+      await user.click(screen.getByRole('button', { name: /personalise/i }))
+      await user.type(await screen.findByLabelText(/add an author/i), 'Fiona Harvey')
+      await user.click(screen.getByRole('button', { name: /^add$/i }))
+      await user.click(screen.getByRole('button', { name: /^done$/i }))
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+
+      await waitFor(() => {
+        // Fiona Harvey is a contributor on this one and on no other sample story.
+        expect(
+          screen.getByText(/Energy secretary leaning towards rejecting Rosebank oilfield/i),
+        ).toBeInTheDocument()
+      })
+      expect(
+        screen.queryByText(/Jackdaw approval is a step towards a grownup North Sea policy/i),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/Overlapping Plagues Are Killing American Forests/i),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('date filtering', () => {
+    it('removes articles published before the selected start date', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      // Every recorded story predates this.
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await user.type(screen.getByLabelText('From'), '2026-12-01')
+
+      await waitFor(() => expect(screen.getByText(/no articles matched/i)).toBeInTheDocument(), {
+        timeout: 2000,
+      })
     })
   })
 
@@ -300,6 +440,26 @@ describe('App', () => {
       expect(screen.getByText(/no requests are sent to the news apis/i)).toBeInTheDocument()
       // The sample is a single recorded page, so there is nothing to page into.
       expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+    })
+
+    it('can return to Auto after choosing Live or Demo', async () => {
+      // Auto is the default and the only mode that degrades gracefully. Without
+      // a segment of its own it was unreachable for the life of the browser
+      // profile once the reader touched the control.
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+
+      await user.click(screen.getByRole('button', { name: 'Demo' }))
+      expect(useDataMode.getState().preference).toBe('demo')
+
+      await user.click(screen.getByRole('button', { name: 'Auto' }))
+      expect(useDataMode.getState().preference).toBe('auto')
+      expect(screen.getByRole('button', { name: 'Auto' })).toHaveAttribute('aria-pressed', 'true')
+      // …and the control must not claim to be Live while it is actually Auto.
+      expect(screen.getByRole('button', { name: 'Live' })).toHaveAttribute('aria-pressed', 'false')
     })
 
     it('stops calling the providers after switching from live to demo', async () => {

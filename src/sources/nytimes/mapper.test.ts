@@ -1,9 +1,19 @@
-import { describe, expect, it } from 'vitest'
-import fixture from '@/test/fixtures/nyt-search.json'
-import { CATEGORY_TO_DESKS, buildFilterQuery, deskToCategory, toArticle, toNytDate } from './mapper'
+import { createEmptyQuery } from '@/domain/query'
+import { context } from '@/test/context'
+import { requestedUrl, stubFetch } from '@/test/fetch-spy'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nytimesSource } from './adapter'
+import sample from '@/samples/nyt-search.json'
+import { CATEGORY_TO_DESKS, deskToCategory, toArticle, toNytDate } from './mapper'
 import type { NytDoc, NytSearchResponse } from './types'
 
-const docs = (fixture as NytSearchResponse).response.docs
+// `response` and `docs` are both nullable on the wire — see types.ts — so the
+// recorded page has to be narrowed here just as the adapter narrows a live one.
+const docs = (sample as NytSearchResponse).response?.docs ?? []
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('nytimes mapper', () => {
   it('normalises a real API document into an Article', () => {
@@ -75,26 +85,6 @@ describe('nytimes mapper', () => {
     })
   })
 
-  describe('buildFilterQuery', () => {
-    it('is undefined when nothing is filtered, so fq is omitted', () => {
-      expect(buildFilterQuery([], [])).toBeUndefined()
-    })
-
-    it('quotes desk names so multi-word desks survive', () => {
-      expect(buildFilterQuery(['technology'], [])).toBe('news_desk:("Technology" "Personal Tech")')
-    })
-
-    it('combines category and author clauses with AND', () => {
-      expect(buildFilterQuery(['sports'], ['Jane Doe'])).toBe(
-        'news_desk:("Sports" "SpecialSections") AND byline:("Jane Doe")',
-      )
-    })
-
-    it('escapes quotes in author names rather than breaking the Lucene query', () => {
-      expect(buildFilterQuery([], ['A "Nickname" B'])).toBe('byline:("A \\"Nickname\\" B")')
-    })
-  })
-
   describe('toNytDate', () => {
     it('converts ISO dates to the YYYYMMDD form the API requires', () => {
       expect(toNytDate('2026-10-21')).toBe('20261021')
@@ -103,5 +93,45 @@ describe('nytimes mapper', () => {
     it('passes undefined through so the param is omitted', () => {
       expect(toNytDate(undefined)).toBeUndefined()
     })
+  })
+})
+
+describe('nytimes adapter resilience', () => {
+  it('treats a null docs list as an empty page rather than crashing', async () => {
+    // The live API answers `{"response":{"docs":null,...}}` for a zero-hit
+    // query, which is why the wire type is `NytDoc[] | null`.
+    const spy = stubFetch({
+      status: 'OK',
+      response: { docs: null, metadata: { hits: 0 } },
+    })
+
+    const page = await nytimesSource.fetchArticles(createEmptyQuery(), context())
+
+    expect(spy).toHaveBeenCalled()
+    expect(page.articles).toEqual([])
+    expect(page.hasMore).toBe(false)
+  })
+
+  it('survives a response with no envelope at all', async () => {
+    stubFetch({ status: 'OK' })
+    const page = await nytimesSource.fetchArticles(createEmptyQuery(), context())
+    expect(page.articles).toEqual([])
+  })
+
+  it('declares category and author unsupported, because the fq parameter is dead', async () => {
+    // Measured: any fq clause empties the result set on the free tier, so the
+    // adapter must not send one — and must not claim to have filtered.
+    const spy = stubFetch({ status: 'OK', response: { docs: [], metadata: { hits: 0 } } })
+    await nytimesSource.fetchArticles(
+      { ...createEmptyQuery(), categories: ['science'], authors: ['Fiona Harvey'] },
+      context(),
+    )
+
+    expect(requestedUrl(spy).searchParams.has('fq')).toBe(false)
+
+    const capabilities = nytimesSource.capabilities(createEmptyQuery())
+    expect(capabilities.categoryFilter).toBe(false)
+    expect(capabilities.authorFilter).toBe(false)
+    expect(capabilities.dateRangeFilter).toBe(true)
   })
 })

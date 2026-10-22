@@ -3,6 +3,7 @@ import { Chip } from '@/components/ui/Chip'
 import { Toggle } from '@/components/ui/Toggle'
 import type { Category, SourceId } from '@/domain/article'
 import { CATEGORIES, CATEGORY_LABELS } from '@/domain/article'
+import { createEmptyQuery } from '@/domain/query'
 import { todayIso } from '@/lib/dates'
 import { SOURCES } from '@/sources/registry'
 import type { ReactNode } from 'react'
@@ -34,6 +35,14 @@ export function FilterPanel({
   onReset,
 }: FilterPanelProps) {
   const today = todayIso()
+  // Author support never varies by query, so an empty one is a fair probe.
+  const probe = createEmptyQuery()
+  const authorHints: Partial<Record<SourceId, string>> = Object.fromEntries(
+    SOURCES.filter((source) => !source.capabilities(probe).authorFilter).map((source) => [
+      source.id,
+      'Author filtering applied in-browser',
+    ]),
+  )
   const hasFilters =
     values.categories.length > 0 ||
     Boolean(values.dateFrom) ||
@@ -61,9 +70,7 @@ export function FilterPanel({
               label={source.label}
               checked={values.sources.includes(source.id)}
               onChange={() => onToggleSource(source.id)}
-              {...(source.capabilities.authorFilter
-                ? {}
-                : { hint: 'Author filtering applied in-browser' })}
+              {...(authorHints[source.id] ? { hint: authorHints[source.id] } : {})}
             />
           ))}
         </div>
