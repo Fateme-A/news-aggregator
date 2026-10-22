@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn'
-import { IconX } from '@tabler/icons-react'
 import * as RadixDialog from '@radix-ui/react-dialog'
+import { IconX } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 
 interface DialogProps {
@@ -19,7 +19,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/35 backdrop-blur-[3px]" />
         <RadixDialog.Content
           className={cn(
-            'fixed z-50 flex flex-col bg-surface shadow-lift focus:outline-none',
+            'fixed z-50 flex flex-col overflow-hidden bg-surface shadow-lift focus:outline-none',
             'inset-x-0 bottom-0 max-h-[88dvh] rounded-t-sheet',
             'sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[85dvh] sm:w-[min(34rem,92vw)]',
             'sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-sheet sm:ring-1 sm:ring-border',

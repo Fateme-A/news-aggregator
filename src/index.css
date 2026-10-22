@@ -58,10 +58,46 @@
   --shadow-focus: 0 0 0 4px rgb(26 86 219 / 0.16);
 }
 
+/*
+ * Dark mode rewrites the same tokens. Utilities already reference these
+ * variables, so components do not need a second set of classes.
+ */
+html.dark {
+  color-scheme: dark;
+
+  --color-canvas: #0c1118;
+  --color-surface: #161c27;
+  --color-surface-muted: #1e2633;
+
+  --color-border: #2c3544;
+  --color-border-strong: #3d485c;
+
+  --color-ink: #eef2f7;
+  --color-muted: #a8b0bf;
+  --color-subtle: #7d8796;
+
+  --color-accent: #7aa2ff;
+  --color-accent-hover: #98b6ff;
+  --color-accent-soft: #1a2744;
+  --color-accent-ink: #d5e2ff;
+
+  --color-danger: #f87171;
+  --color-danger-soft: #3f1d1d;
+  --color-warning-soft: #3a2e14;
+  --color-warning-ink: #fcd34d;
+
+  --shadow-subtle: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px -16px rgb(0 0 0 / 0.65);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 22px 48px -20px rgb(0 0 0 / 0.7);
+  --shadow-focus: 0 0 0 4px rgb(122 162 255 / 0.28);
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    /* Keep the scrollbar gutter so opening a dialog does not shift the page. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -94,6 +130,16 @@
 
   ::-webkit-calendar-picker-indicator:hover {
     opacity: 0.9;
+  }
+
+  html.dark body {
+    background-image:
+      radial-gradient(1100px 460px at 10% -12%, rgb(122 162 255 / 0.12), transparent 58%),
+      radial-gradient(820px 380px at 100% -4%, rgb(255 255 255 / 0.03), transparent 52%);
+  }
+
+  html.dark ::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 
   /* The search input's native clear affordance clashes with our own styling. */

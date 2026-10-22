@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { mockApi } from '@/test/mock-api'
 import { useDataMode } from '@/store/data-mode'
 import { usePreferences } from '@/store/preferences'
+import { mockApi } from '@/test/mock-api'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 
 function renderApp() {
@@ -122,7 +122,7 @@ describe('App', () => {
       await user.click(screen.getByRole('checkbox', { name: /the guardian/i }))
 
       await waitFor(() => {
-        expect(usePreferences.getState().sources).not.toContain('guardian')
+        expect(usePreferences.getState().sources).toContain('guardian')
       })
 
       const countAfter = requests.filter((url) => url.includes('/api/guardian/')).length
@@ -165,6 +165,29 @@ describe('App', () => {
         },
         { timeout: 2000 },
       )
+    })
+
+    it('leaves explore dates behind when switching to the personalised feed', async () => {
+      const user = userEvent.setup()
+      usePreferences.getState().toggleCategory('technology')
+      const { requests } = mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await user.type(screen.getByLabelText('From'), '2026-01-01')
+
+      await waitFor(() => {
+        expect(requests.some((url) => url.includes('from-date=2026-01-01'))).toBe(true)
+      })
+
+      const beforeSwitch = requests.length
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+
+      await waitFor(() => expect(requests.length).toBeGreaterThan(beforeSwitch))
+      const personalised = requests.slice(beforeSwitch)
+      expect(personalised.some((url) => url.includes('technology'))).toBe(true)
+      expect(personalised.some((url) => url.includes('from-date='))).toBe(false)
+      expect(personalised.some((url) => url.includes('begin_date='))).toBe(false)
     })
   })
 

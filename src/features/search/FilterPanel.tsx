@@ -15,6 +15,7 @@ export interface FilterValues {
 }
 
 interface FilterPanelProps {
+  idPrefix?: string
   values: FilterValues
   onToggleSource: (id: SourceId) => void
   onToggleCategory: (category: Category) => void
@@ -24,6 +25,7 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({
+  idPrefix = 'filter',
   values,
   onToggleSource,
   onToggleCategory,
@@ -33,7 +35,10 @@ export function FilterPanel({
 }: FilterPanelProps) {
   const today = todayIso()
   const hasFilters =
-    values.categories.length > 0 || Boolean(values.dateFrom) || Boolean(values.dateTo)
+    values.categories.length > 0 ||
+    Boolean(values.dateFrom) ||
+    Boolean(values.dateTo) ||
+    values.sources.length !== SOURCES.length
 
   return (
     <div className="@container divide-y divide-border">
@@ -82,14 +87,14 @@ export function FilterPanel({
       <Section title="Published">
         <div className="grid grid-cols-1 gap-3 @[19rem]:grid-cols-2">
           <DateField
-            id="date-from"
+            id={`${idPrefix}-date-from`}
             label="From"
             value={values.dateFrom}
             max={values.dateTo || today}
             onChange={onDateFromChange}
           />
           <DateField
-            id="date-to"
+            id={`${idPrefix}-date-to`}
             label="To"
             value={values.dateTo}
             min={values.dateFrom}

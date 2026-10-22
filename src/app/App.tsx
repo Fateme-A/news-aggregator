@@ -13,17 +13,24 @@ import {
   SourceFailureNotice,
 } from '@/features/feed/FeedStates'
 import { PreferencesDialog } from '@/features/preferences/PreferencesDialog'
-import { CategoryRail } from '@/features/search/CategoryRail'
 import { FilterPanel } from '@/features/search/FilterPanel'
 import { SearchBar } from '@/features/search/SearchBar'
-import type { FeedMode } from '@/store/preferences'
-import { pluralize } from '@/lib/text'
 import { useArticles } from '@/hooks/useArticles'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useSourceAvailability } from '@/hooks/useSourceAvailability'
+import { pluralize } from '@/lib/text'
+import { ALL_SOURCE_IDS } from '@/sources/registry'
 import { useDataMode } from '@/store/data-mode'
+import type { FeedMode } from '@/store/preferences'
 import { usePreferences } from '@/store/preferences'
-import { IconAdjustmentsHorizontal, IconFilter, IconStar } from '@tabler/icons-react'
+import { useTheme } from '@/store/theme'
+import {
+  IconAdjustmentsHorizontal,
+  IconFilter,
+  IconMoon,
+  IconStar,
+  IconSun,
+} from '@tabler/icons-react'
 import { useState } from 'react'
 
 const FEED_MODES = [
@@ -33,6 +40,7 @@ const FEED_MODES = [
 
 export function App() {
   const [keyword, setKeyword] = useState('')
+  const [exploreSources, setExploreSources] = useState<SourceId[]>(() => [...ALL_SOURCE_IDS])
   const [categories, setCategories] = useState<Category[]>([])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -40,6 +48,8 @@ export function App() {
 
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [preferencesOpen, setPreferencesOpen] = useState(false)
+  const theme = useTheme((state) => state.theme)
+  const toggleTheme = useTheme((state) => state.toggleTheme)
 
   const preferences = usePreferences()
   const isMyFeed = preferences.mode === 'my-feed'
@@ -47,6 +57,7 @@ export function App() {
 
   const debouncedKeyword = useDebouncedValue(keyword, 400)
 
+  const activeSources = isMyFeed ? preferences.sources : exploreSources
   const activeCategories = isMyFeed ? preferences.categories : categories
   const activeAuthors = isMyFeed ? preferences.authors : []
 
@@ -56,8 +67,8 @@ export function App() {
     authors: activeAuthors,
     page,
     pageSize: DEFAULT_PAGE_SIZE,
-    ...(dateFrom ? { dateFrom } : {}),
-    ...(dateTo ? { dateTo } : {}),
+    ...(!isMyFeed && dateFrom ? { dateFrom } : {}),
+    ...(!isMyFeed && dateTo ? { dateTo } : {}),
   }
 
   const {
@@ -70,7 +81,7 @@ export function App() {
     clientFilteredSources,
     deliveries,
     isResolvingMode,
-  } = useArticles(query, preferences.sources, preferences.sources.length > 0)
+  } = useArticles(query, activeSources, activeSources.length > 0)
 
   function resetToFirstPage<T>(setter: (value: T) => void) {
     return (value: T) => {
@@ -89,12 +100,15 @@ export function App() {
   }
 
   function toggleSource(id: SourceId) {
-    preferences.toggleSource(id)
+    setExploreSources((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    )
     setPage(1)
   }
 
   function resetFilters() {
     setKeyword('')
+    setExploreSources([...ALL_SOURCE_IDS])
     setCategories([])
     setDateFrom('')
     setDateTo('')
@@ -106,19 +120,26 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const filterPanel = (
-    <FilterPanel
-      values={{ sources: preferences.sources, categories, dateFrom, dateTo }}
-      onToggleSource={toggleSource}
-      onToggleCategory={toggleCategory}
-      onDateFromChange={resetToFirstPage(setDateFrom)}
-      onDateToChange={resetToFirstPage(setDateTo)}
-      onReset={resetFilters}
-    />
-  )
+  function renderFilterPanel(idPrefix: string) {
+    return (
+      <FilterPanel
+        idPrefix={idPrefix}
+        values={{ sources: exploreSources, categories, dateFrom, dateTo }}
+        onToggleSource={toggleSource}
+        onToggleCategory={toggleCategory}
+        onDateFromChange={resetToFirstPage(setDateFrom)}
+        onDateToChange={resetToFirstPage(setDateTo)}
+        onReset={resetFilters}
+      />
+    )
+  }
 
-  const activeFilterCount = categories.length + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)
-  const hasSources = preferences.sources.length > 0
+  const hasSources = activeSources.length > 0
+  const activeFilterCount =
+    categories.length +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0) +
+    (exploreSources.length === ALL_SOURCE_IDS.length ? 0 : 1)
 
   const personalisationSummary = [
     preferences.categories.length > 0 &&
@@ -154,28 +175,40 @@ export function App() {
 
           <Button
             size="icon"
-            className="relative order-1 lg:hidden"
-            onClick={() => setFiltersOpen(true)}
-            aria-label={
-              activeFilterCount > 0 ? `Open filters, ${activeFilterCount} active` : 'Open filters'
-            }
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={toggleTheme}
+            className="order-1 shrink-0"
           >
-            <IconFilter size={18} stroke={1.75} aria-hidden />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-accent text-[11px] font-semibold text-white ring-2 ring-canvas">
-                {activeFilterCount}
-              </span>
+            {theme === 'dark' ? (
+              <IconSun size={18} stroke={1.75} aria-hidden />
+            ) : (
+              <IconMoon size={18} stroke={1.75} aria-hidden />
             )}
           </Button>
 
+          {!isMyFeed && (
+            <Button
+              aria-label={activeFilterCount > 0 ? `Filter, ${activeFilterCount} active` : 'Filter'}
+              onClick={() => setFiltersOpen(true)}
+              className="order-1 h-11 shrink-0 px-3.5 lg:hidden"
+            >
+              <IconFilter size={18} stroke={1.75} aria-hidden />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="grid min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-semibold text-canvas">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          )}
+
           <Button
-            size="icon"
             aria-label="Personalise"
             onClick={() => setPreferencesOpen(true)}
-            className="order-1 shrink-0 sm:w-auto sm:px-5 lg:order-3"
+            className="order-1 h-11 shrink-0 px-3.5 sm:px-5 lg:order-3"
           >
-            <IconAdjustmentsHorizontal size={18} stroke={1.75} className="sm:hidden" aria-hidden />
-            <span className="hidden sm:inline">Personalise</span>
+            <IconAdjustmentsHorizontal size={18} stroke={1.75} aria-hidden />
+            Personalise
           </Button>
         </div>
 
@@ -189,37 +222,45 @@ export function App() {
         />
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:flex lg:gap-8 lg:py-8">
+      <div className="mx-auto max-w-7xl px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:flex lg:gap-8 lg:pt-8 lg:pb-8">
         <aside className="hidden w-[17rem] shrink-0 lg:block">
           <div className="sticky top-28 rounded-card bg-surface p-5 ring-1 ring-border ring-inset">
-            {filtersOpen ? null : filterPanel}
+            {isMyFeed ? (
+              <div>
+                <h2 className="font-serif text-xl font-medium tracking-tight text-ink">My Feed</h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {personalisationSummary
+                    ? `Saved choices: ${personalisationSummary}.`
+                    : 'Saved sources, categories, and authors shape this feed.'}
+                </p>
+              </div>
+            ) : (
+              renderFilterPanel('sidebar')
+            )}
           </div>
         </aside>
 
         <main className="min-w-0 flex-1">
-          <div className="mb-4 flex flex-col gap-3 lg:mb-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-            <SegmentedControl
+          <div className="mb-4 flex items-center justify-between gap-4 lg:mb-5">
+            <nav
               aria-label="Feed mode"
-              segments={FEED_MODES}
-              value={preferences.mode}
-              onChange={preferences.setMode}
-              className="order-1 w-full max-w-sm lg:w-auto lg:max-w-none"
-            />
-
-            {!isMyFeed && (
-              <CategoryRail
-                className="order-2 lg:hidden"
-                selected={categories}
-                onToggle={toggleCategory}
-                onClear={() => {
-                  setCategories([])
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-canvas/95 px-4 pt-2.5 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:inset-auto lg:z-auto lg:w-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+            >
+              <SegmentedControl
+                aria-label="Feed mode"
+                segments={FEED_MODES}
+                value={preferences.mode}
+                onChange={(mode) => {
+                  preferences.setMode(mode)
                   setPage(1)
+                  if (mode === 'my-feed') setFiltersOpen(false)
                 }}
+                className="w-full lg:w-auto"
               />
-            )}
+            </nav>
 
             {hasSources && !isLoading && articles.length > 0 && (
-              <p className="order-3 text-[13px] text-muted lg:order-2" role="status">
+              <p className="text-[13px] text-muted" role="status">
                 {pluralize(articles.length, 'article')}
                 {debouncedKeyword && (
                   <>
@@ -232,7 +273,7 @@ export function App() {
           </div>
 
           {isMyFeed && (
-            <div className="mb-5 flex items-start gap-3 rounded-card bg-accent-soft px-4 py-3.5 ring-1 ring-accent/15 ring-inset">
+            <div className="mb-5 flex items-start gap-3 rounded-card bg-accent-soft px-4 py-3.5 ring-1 ring-accent/15 ring-inset lg:hidden">
               <IconStar
                 size={18}
                 stroke={1.75}
@@ -291,22 +332,21 @@ export function App() {
         </main>
       </div>
 
-      <Dialog
-        open={filtersOpen}
-        onOpenChange={setFiltersOpen}
-        title="Filters"
-        footer={
-          <Button
-            variant="primary"
-            className="w-full sm:w-auto"
-            onClick={() => setFiltersOpen(false)}
-          >
-            Show results
-          </Button>
-        }
-      >
-        {filterPanel}
-      </Dialog>
+      {!isMyFeed && (
+        <Dialog
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          title="Filter Explore"
+          description="Sources, categories, and dates apply to Explore. My Feed uses Personalise."
+          footer={
+            <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+              Done
+            </Button>
+          }
+        >
+          {renderFilterPanel('sheet')}
+        </Dialog>
+      )}
 
       <PreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
     </div>

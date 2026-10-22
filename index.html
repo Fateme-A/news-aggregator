@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Search and filter news from The Guardian, The New York Times and NewsAPI in one personalised feed." />
     <title>Newsstand — News Aggregator</title>
+    <script>
+      try {
+        var theme = localStorage.getItem('newsstand.theme')
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        if (theme === 'dark') document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
