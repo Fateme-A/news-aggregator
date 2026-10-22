@@ -102,7 +102,9 @@ server {
         proxy_pass            https://newsapi.org;
         proxy_ssl_server_name on;
         proxy_set_header      Host newsapi.org;
-        proxy_set_header      X-Api-Key ${NEWSAPI_KEY};
+        # Quoted: with no key configured this substitutes to nothing, and an
+        # unquoted empty value is a syntax error rather than an empty header.
+        proxy_set_header      X-Api-Key "${NEWSAPI_KEY}";
         proxy_set_header      Accept application/json;
         # NewsAPI rejects requests that arrive without a user agent.
         proxy_set_header      User-Agent "newsstand/1.0";

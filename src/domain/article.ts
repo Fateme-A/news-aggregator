@@ -1,23 +1,15 @@
 /**
- * The normalised article model.
- *
- * Every provider has its own wire format; nothing outside `src/sources/<provider>/`
- * is allowed to know about those shapes. Adapters map into this one type, so the
- * feed, filters and UI are written exactly once regardless of how many providers
- * are plugged in.
+ * The normalised article model. Adapters map every wire format into this one
+ * type; nothing outside `src/sources/<provider>/` knows the originals.
  */
 
 /** Identifier for a configured provider. Extended by adding to the registry. */
 export type SourceId = 'guardian' | 'nytimes' | 'newsapi'
 
 /**
- * The canonical category vocabulary.
- *
- * Providers disagree wildly on taxonomy — The Guardian has hundreds of sections,
- * the NYT has dozens of news desks, NewsAPI has exactly seven fixed categories.
- * We adopt NewsAPI's set because it is the narrowest, which makes every mapping a
- * total function in the direction we need (provider → canonical). Each adapter
- * owns the lookup table for its own vocabulary.
+ * The canonical category vocabulary. The Guardian has hundreds of sections and
+ * the NYT dozens of news desks; NewsAPI's seven are the narrowest set, which
+ * makes provider → canonical a total function. Each adapter owns its own table.
  */
 export const CATEGORIES = [
   'business',

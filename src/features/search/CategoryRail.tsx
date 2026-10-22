@@ -5,13 +5,10 @@ import type { Category } from '@/domain/article'
 import { CATEGORIES, CATEGORY_LABELS } from '@/domain/article'
 
 /**
- * The category filter, as a swipeable rail, below `lg` only.
- *
- * On desktop the categories live in the sidebar. On a phone that sidebar is
- * behind a sheet, so the most-used filter would otherwise cost two taps. The
- * rail bleeds to the viewport edges so chips run off-screen — signalling that
- * it scrolls — while the scrolling itself is contained (see the `rail` utility
- * in `index.css`), so it can never become a page-level horizontal scroll.
+ * The category filter as a swipeable rail, below `lg` only, where the sidebar
+ * is behind a sheet and the most-used filter would otherwise cost two taps.
+ * Bleeds to the viewport edges so chips run off-screen, signalling that it
+ * scrolls; the scroll itself is contained (the `rail` utility in `index.css`).
  */
 interface CategoryRailProps {
   selected: Category[]

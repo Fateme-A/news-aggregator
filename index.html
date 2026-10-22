@@ -8,13 +8,16 @@
       content="Search and filter news from The Guardian, The New York Times and NewsAPI in one personalised feed."
     />
     <title>Newsstand — News Aggregator</title>
+    <!-- Applies the stored theme before first paint, so there is no flash of
+         the wrong one. Anything other than an explicit light/dark choice —
+         "system", or nothing stored yet — follows the operating system. -->
     <script>
       try {
-        var theme = localStorage.getItem('newsstand.theme')
-        if (theme !== 'light' && theme !== 'dark') {
-          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        }
-        if (theme === 'dark') document.documentElement.classList.add('dark')
+        var choice = localStorage.getItem('newsstand.theme')
+        var dark =
+          choice === 'dark' ||
+          (choice !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
       } catch (e) {}
     </script>
     <!-- Fonts are self-hosted (src/fonts.css, public/fonts) so the container

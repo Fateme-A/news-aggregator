@@ -1,30 +1,31 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Category, SourceId } from '@/domain/article'
+import { CATEGORIES, type Category, type SourceId } from '@/domain/article'
 import { ALL_SOURCE_IDS } from '@/sources/registry'
 
 /**
- * The "personalised news feed" requirement.
- *
- * Preferences persist to localStorage so a returning visitor sees their own feed
- * immediately. They are deliberately kept separate from the transient search
- * state (keyword, date range, page) which lives in component state and resets on
- * reload — only the durable choices belong here.
+ * Durable choices only. Transient search state — keyword, date range, page —
+ * lives in component state and resets on reload.
  */
 
-export type FeedMode = 'explore' | 'my-feed'
+export const FEED_MODES = ['explore', 'my-feed'] as const
+export type FeedMode = (typeof FEED_MODES)[number]
 
 /** Pages keeps Previous and Next. Infinite appends the next page as you scroll. */
-export type BrowseMode = 'pages' | 'infinite'
+export const BROWSE_MODES = ['pages', 'infinite'] as const
+export type BrowseMode = (typeof BROWSE_MODES)[number]
 
-export interface PreferencesState {
+/** The data half of the store — what is worth writing to localStorage. */
+export interface StoredPreferences {
   /** Providers to query. Empty is treated as "none selected" and shows a prompt. */
   sources: SourceId[]
   categories: Category[]
   authors: string[]
   mode: FeedMode
   browseMode: BrowseMode
+}
 
+export interface PreferencesState extends StoredPreferences {
   toggleSource: (id: SourceId) => void
   toggleCategory: (category: Category) => void
   addAuthor: (author: string) => void
@@ -36,16 +37,59 @@ export interface PreferencesState {
   hasPreferences: () => boolean
 }
 
-const INITIAL = {
-  sources: [...ALL_SOURCE_IDS] as SourceId[],
-  categories: [] as Category[],
-  authors: [] as string[],
-  mode: 'explore' as FeedMode,
-  browseMode: 'pages' as BrowseMode,
+const INITIAL: StoredPreferences = {
+  sources: [...ALL_SOURCE_IDS],
+  categories: [],
+  authors: [],
+  mode: 'explore',
+  browseMode: 'pages',
 }
 
 function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
+}
+
+function isOneOf<T extends string>(allowed: readonly T[], value: unknown): value is T {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value)
+}
+
+function stringsIn<T extends string>(allowed: readonly T[], value: unknown): T[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((item): item is T => isOneOf(allowed, item)))]
+}
+
+/**
+ * Narrows untrusted stored state to the vocabulary the app knows. `getSource`
+ * throws on an unknown source id, which would blank the page before the first
+ * render. Done field by field, so one bad entry is dropped rather than the
+ * whole saved state.
+ */
+export function sanitizePreferences(value: unknown): Partial<StoredPreferences> {
+  if (!value || typeof value !== 'object') return {}
+  const raw = value as Record<string, unknown>
+  const stored: Partial<StoredPreferences> = {}
+
+  if (Array.isArray(raw.sources)) stored.sources = stringsIn(ALL_SOURCE_IDS, raw.sources)
+  if (Array.isArray(raw.categories)) stored.categories = stringsIn(CATEGORIES, raw.categories)
+
+  if (Array.isArray(raw.authors)) {
+    const seen = new Set<string>()
+    stored.authors = raw.authors
+      .filter((name): name is string => typeof name === 'string')
+      .map((name) => name.trim())
+      .filter((name) => {
+        if (!name) return false
+        const key = name.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+  }
+
+  if (isOneOf(FEED_MODES, raw.mode)) stored.mode = raw.mode
+  if (isOneOf(BROWSE_MODES, raw.browseMode)) stored.browseMode = raw.browseMode
+
+  return stored
 }
 
 export const usePreferences = create<PreferencesState>()(
@@ -89,6 +133,7 @@ export const usePreferences = create<PreferencesState>()(
         mode,
         browseMode,
       }),
+      merge: (persisted, current) => ({ ...current, ...sanitizePreferences(persisted) }),
     },
   ),
 )

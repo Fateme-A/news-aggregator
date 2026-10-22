@@ -2,9 +2,8 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 /**
- * Defaults are tuned for the providers' rate limits rather than for freshness:
- * NewsAPI allows 100 requests a day and the NYT 5 a minute, so refetching on
- * every window focus would exhaust the budget within a normal browsing session.
+ * Tuned for rate limits rather than freshness: NewsAPI allows 100 requests a
+ * day, so refetching on window focus would exhaust the budget in one session.
  */
 const queryClient = new QueryClient({
   defaultOptions: {

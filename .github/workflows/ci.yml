@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch makes the previous run's result irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Dockerfile's build stage.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npx tsc -b
+
+      - run: npm run test
+
+      # No API keys: the build must not need them, and nothing secret may reach
+      # the bundle. Keys are supplied to the container at start-up instead.
+      - run: npm run build
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker build -t newsstand:ci .
+
+      # Start with no keys at all: every provider falls back to its recorded
+      # sample, so a keyless container must still serve the app.
+      - name: Serve the app without any API keys
+        run: |
+          docker run -d --name newsstand -p 8080:8080 newsstand:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/ > /dev/null; then
+              echo "Container is serving."
+              curl -fsS http://127.0.0.1:8080/api/status
+              docker rm -f newsstand
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Container did not become ready."
+          docker logs newsstand
+          exit 1

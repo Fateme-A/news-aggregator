@@ -29,6 +29,10 @@ export interface FeedQuery {
   toggleSource: (id: SourceId) => void
   toggleCategory: (category: Category) => void
   clearCategories: () => void
+  clearDates: () => void
+  /** Sources, categories and dates back to their defaults; the keyword stays. */
+  clearFilters: () => void
+  /** Everything Explore can ask for, keyword included. */
   resetFilters: () => void
   setPage: (page: number) => void
   nextPage: () => void
@@ -42,14 +46,9 @@ function toggle<T>(list: T[], value: T): T[] {
 }
 
 /**
- * Owns everything that decides *what to ask for*.
- *
- * Explore and My Feed are two sets of inputs feeding one `ArticleQuery`:
- * Explore's live in component state and reset on reload, My Feed's are the
- * saved preferences. Keeping the switch here rather than in the component is
- * what stops it being re-derived at four call sites, and it means any change
- * that should restart paging can do so in one place — every setter below
- * returns to page 1 on its own.
+ * Decides what to ask for. Explore's inputs live in component state and reset
+ * on reload; My Feed's are the saved preferences. Every setter returns to
+ * page 1.
  */
 export function useFeedQuery(): FeedQuery {
   const [keyword, setKeywordRaw] = useState('')
@@ -67,7 +66,7 @@ export function useFeedQuery(): FeedQuery {
   const isMyFeed = mode === 'my-feed'
   const debouncedKeyword = useDebouncedValue(keyword, 400)
 
-  /** Any input change restarts paging; forgetting this is how page 7 of a new search happens. */
+  /** Any input change restarts paging, or a new search opens on page 7. */
   const fromFirstPage = useCallback(<T>(setter: (value: T) => void) => {
     return (value: T) => {
       setter(value)
@@ -85,19 +84,30 @@ export function useFeedQuery(): FeedQuery {
       authors: isMyFeed ? savedAuthors : EMPTY_AUTHORS,
       page,
       pageSize: DEFAULT_PAGE_SIZE,
-      // Dates belong to Explore. My Feed is a standing set of interests, not a
-      // point-in-time search, so carrying a stale range into it would quietly
-      // hide new articles.
+      // My Feed is a standing set of interests, not a point-in-time search:
+      // a stale range carried into it would hide new articles.
       ...(!isMyFeed && dateFrom ? { dateFrom } : {}),
       ...(!isMyFeed && dateTo ? { dateTo } : {}),
     }),
     [debouncedKeyword, isMyFeed, savedCategories, categories, savedAuthors, page, dateFrom, dateTo],
   )
 
-  const resetFilters = useCallback(() => {
-    setKeywordRaw('')
+  /** Leaves the keyword: it has its own control in the search box. */
+  const clearFilters = useCallback(() => {
     setExploreSources([...ALL_SOURCE_IDS])
     setCategories([])
+    setDateFromRaw('')
+    setDateToRaw('')
+    setPage(1)
+  }, [])
+
+  /** For the empty state, where an unmatched keyword is the usual cause. */
+  const resetFilters = useCallback(() => {
+    setKeywordRaw('')
+    clearFilters()
+  }, [clearFilters])
+
+  const clearDates = useCallback(() => {
     setDateFromRaw('')
     setDateToRaw('')
     setPage(1)
@@ -110,10 +120,10 @@ export function useFeedQuery(): FeedQuery {
     explore: { sources: exploreSources, categories, dateFrom, dateTo },
     page,
     isMyFeed,
+    // A date range counts once, matching the chips shown above the feed.
     activeFilterCount:
       categories.length +
-      (dateFrom ? 1 : 0) +
-      (dateTo ? 1 : 0) +
+      (dateFrom || dateTo ? 1 : 0) +
       (exploreSources.length === ALL_SOURCE_IDS.length ? 0 : 1),
 
     setKeyword: fromFirstPage(setKeywordRaw),
@@ -129,6 +139,8 @@ export function useFeedQuery(): FeedQuery {
       setCategories([])
       setPage(1)
     },
+    clearDates,
+    clearFilters,
     resetFilters,
     setPage,
     nextPage: () => setPage((current) => current + 1),

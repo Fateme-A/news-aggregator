@@ -2,20 +2,14 @@ import type { Article, Category } from '@/domain/article'
 import { stripHtml } from '@/lib/text'
 import type { NewsApiArticle } from './types'
 
-/**
- * NewsAPI's own vocabulary *is* our canonical vocabulary, so no lookup table is
- * needed here — the other two providers map into this set. That is precisely why
- * `Category` was defined from NewsAPI's seven values.
- */
+/** NewsAPI's vocabulary is the canonical one, so there is no table to map. */
 export function toNewsApiCategory(category: Category): string {
   return category
 }
 
 /**
- * NewsAPI aggregates thousands of outlets, so unlike the single-publisher
- * providers it cannot tell us a category per article — only the outlet name.
- * We therefore pass the requested category through rather than inferring one,
- * and leave it undefined when the user has not asked for a category.
+ * NewsAPI reports the outlet, not a category per article, so the requested
+ * category is passed through rather than inferred.
  */
 export function toArticle(raw: NewsApiArticle, requestedCategory?: Category): Article {
   const article: Article = {
@@ -36,11 +30,7 @@ export function toArticle(raw: NewsApiArticle, requestedCategory?: Category): Ar
   return article
 }
 
-/**
- * NewsAPI's `/everything` endpoint returns removed articles as literal
- * `"[Removed]"` placeholders. They carry no usable content, so they are dropped
- * before they reach the feed.
- */
+/** `/everything` returns removed articles as literal "[Removed]" placeholders. */
 export function isUsable(raw: NewsApiArticle): boolean {
   return Boolean(raw.url) && raw.title !== null && raw.title !== '[Removed]'
 }

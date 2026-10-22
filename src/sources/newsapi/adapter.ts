@@ -12,35 +12,25 @@ import { isUsable, toArticle, toNewsApiCategory } from './mapper'
 import type { NewsApiResponse } from './types'
 
 /**
- * `/top-headlines` is the only endpoint that understands `category`, so any
- * query carrying one has to go there — keyword included. It accepts `q`
- * alongside `category` (verified live), it just searches a much smaller corpus.
- * Serving a narrow, correct result beats serving a broad, unfiltered one.
+ * `/top-headlines` is the only endpoint that understands `category`, so a query
+ * carrying one goes there, keyword included. It accepts `q` alongside
+ * `category` (verified live) over a smaller corpus.
  */
 function usesTopHeadlines(query: ArticleQuery): boolean {
   return query.categories.length > 0
 }
 
 /**
- * NewsAPI.org.
+ * NewsAPI.org. 100 requests/day, a 24-hour article delay, and no CORS at all
+ * (hence the proxy). Filters are split across two endpoints that cannot be
+ * combined:
  *
- * The only provider of the three that aggregates many outlets, which is what
- * makes the result set look like an actual news aggregator rather than two
- * newspapers. It is also by far the most constrained: 100 requests/day, a 24-hour
- * article delay, and no cross-origin access at all (hence the proxy).
+ *            | /everything       | /top-headlines
+ *   keyword  | yes, full archive | yes, headlines only
+ *   category | no                | yes, one at a time
+ *   dates    | yes               | ignored
  *
- * It splits functionality across two endpoints that cannot be combined, and the
- * split is lopsided:
- *
- * | | `/everything` | `/top-headlines` |
- * | --- | --- | --- |
- * | keyword  | yes, full archive | yes, headlines only |
- * | category | **no**            | yes, one at a time |
- * | dates    | yes               | **ignored** |
- *
- * The adapter picks the endpoint and reports, through `capabilities`, which
- * filters it could not honour for that particular query — so `useArticles`
- * applies those in the browser rather than returning results that ignore them.
+ * `capabilities` reports whatever the chosen endpoint could not honour.
  */
 export const newsapiSource: NewsSource = {
   id: 'newsapi',
@@ -56,8 +46,8 @@ export const newsapiSource: NewsSource = {
       categoryFilter: topHeadlines && query.categories.length === 1,
       // /top-headlines silently ignores `from`/`to`.
       dateRangeFilter: !topHeadlines,
-      // A second category is not a filter the browser can re-apply — those
-      // articles were never in the response. Say so instead of looking broken.
+      // A second category is not something the browser can re-apply: those
+      // articles were never in the response.
       ...(topHeadlines && query.categories.length > 1 && first
         ? {
             caveats: [
@@ -84,8 +74,7 @@ export const newsapiSource: NewsSource = {
           pageSize: query.pageSize,
         })
       : buildQuery({
-          // `/everything` rejects a request with no query at all, so fall back to
-          // a broad term when the user has not typed anything.
+          // `/everything` rejects a request with no query at all.
           q: keyword || 'news',
           from: query.dateFrom,
           to: query.dateTo,
@@ -99,8 +88,8 @@ export const newsapiSource: NewsSource = {
     const url = `${apiBase('newsapi')}/${endpoint}${search}`
     let data = await fetchJson<NewsApiResponse>('newsapi', url, context)
 
-    // NewsAPI reports rate limiting and bad keys as HTTP 200 with status:"error",
-    // so the shared transport layer cannot classify them; do it here.
+    // NewsAPI reports rate limits and bad keys as HTTP 200 with status:"error",
+    // which the shared transport cannot classify.
     if (data.status === 'error') {
       const error = new NewsSourceError(
         'newsapi',
@@ -122,9 +111,8 @@ export const newsapiSource: NewsSource = {
     const total = data.totalResults ?? raw.length
 
     return {
-      // /top-headlines knows the category it was asked for, so every article it
-      // returns can be tagged. /everything cannot: it carries no category data,
-      // which is exactly why a category forces the other endpoint.
+      // /top-headlines knows the category it was asked for; /everything
+      // carries none, which is why a category forces the other endpoint.
       articles: raw.map((item) => toArticle(item, topHeadlines ? category : undefined)),
       totalResults: total,
       hasMore: query.page * query.pageSize < total,

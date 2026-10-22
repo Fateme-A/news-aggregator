@@ -23,8 +23,12 @@ USER root
 # entrypoint at container start, which is how the API keys arrive as runtime
 # environment variables rather than being baked into the image.
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# Both run from the image's own entrypoint: the first defines the key variables
+# so envsubst can substitute them even when none were supplied, the second
+# publishes which of them ended up set. Neither bakes a value into a layer.
+COPY docker/15-api-key-defaults.envsh /docker-entrypoint.d/15-api-key-defaults.envsh
 COPY docker/40-api-status.sh /docker-entrypoint.d/40-api-status.sh
-RUN chmod +x /docker-entrypoint.d/40-api-status.sh
+RUN chmod +x /docker-entrypoint.d/15-api-key-defaults.envsh /docker-entrypoint.d/40-api-status.sh
 
 COPY --from=build /app/dist /usr/share/nginx/html
 

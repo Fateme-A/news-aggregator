@@ -1,0 +1,14 @@
+#!/bin/sh
+# Sourced by the nginx entrypoint *before* 20-envsubst-on-templates.sh, so the
+# exports below are visible to it.
+#
+# envsubst only substitutes variables that exist in the environment: an unset
+# GUARDIAN_KEY leaves a literal `${GUARDIAN_KEY}` in the rendered config and
+# nginx refuses to start. Defining the three as empty here is what lets the
+# container run with no keys at all — every provider then serves its recorded
+# sample. A value supplied with -e or --env-file wins, because := only assigns
+# when the variable is unset or empty.
+: "${GUARDIAN_KEY:=}"
+: "${NYT_KEY:=}"
+: "${NEWSAPI_KEY:=}"
+export GUARDIAN_KEY NYT_KEY NEWSAPI_KEY

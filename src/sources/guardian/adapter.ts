@@ -6,11 +6,8 @@ import { sectionsParam, toArticle } from './mapper'
 import type { GuardianSearchResponse } from './types'
 
 /**
- * The Guardian Content API.
- *
- * The most capable of the three providers: it filters by keyword, date range,
- * section and contributor server-side, caps at 5,000 requests/day, and reaches
- * back to 1999.
+ * The Guardian Content API. Filters by keyword, date, section and contributor
+ * server-side. 5,000 requests/day, archive back to 1999.
  */
 export const guardianSource: NewsSource = {
   id: 'guardian',

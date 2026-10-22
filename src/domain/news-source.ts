@@ -2,31 +2,20 @@ import type { Category, SourceId } from './article'
 import type { ArticlePage, ArticleQuery } from './query'
 
 /**
- * What a provider will do *on the server side for one specific query*.
+ * What a provider applies server-side for one specific query. `useArticles`
+ * re-applies in the browser anything flagged `false`.
  *
- * This is the Interface Segregation point, and it is load-bearing: `useArticles`
- * checks each flag and applies the predicate in the browser wherever a provider
- * answers `false`, rather than returning results that quietly ignore the filter.
- *
- * It takes the query because for two of the three providers the honest answer
- * depends on what else was asked for. NewsAPI can filter by category only on
- * `/top-headlines`, and that endpoint in turn ignores a date range — so the same
- * provider supports `dateRangeFilter` for one query and not for the next. A
- * static boolean could only have lied about one of those cases.
+ * Query-dependent because NewsAPI filters by category only on `/top-headlines`,
+ * and that endpoint ignores a date range.
  */
 export interface SourceCapabilities {
   authorFilter: boolean
   categoryFilter: boolean
   dateRangeFilter: boolean
   /**
-   * Limits the browser cannot paper over.
-   *
-   * A `false` flag above means "the provider did not apply this, so you do it
-   * here". A caveat means the articles simply are not in the response and no
-   * amount of client-side work will produce them — NewsAPI returning a single
-   * category at a time, for instance. These are shown to the reader rather
-   * than hidden, because the alternative is a feed that looks under-filled for
-   * no visible reason. Each entry is a complete sentence.
+   * Coverage the browser cannot recover: the articles are not in the response
+   * at all, e.g. NewsAPI returning one category per request. Surfaced to the
+   * reader. Each entry is a complete sentence.
    */
   caveats?: string[]
 }
@@ -44,11 +33,8 @@ export interface Delivery {
 }
 
 /**
- * Everything a fetch needs beyond the query itself.
- *
- * `mode` and `configured` are resolved by the caller (`useArticles`) and handed
- * down, so `sources/http.ts` depends on no application state — it cannot reach
- * for a store, and it can be tested by passing a value.
+ * Resolved by the caller and passed down, so `sources/` reads no application
+ * state and can be tested by passing a value.
  */
 export interface FetchContext {
   signal?: AbortSignal
@@ -58,13 +44,9 @@ export interface FetchContext {
 }
 
 /**
- * The port. Every provider implements exactly this, and nothing outside
- * `src/sources/<provider>/` depends on anything narrower.
- *
- * Adding a fourth provider means writing one folder, appending one line to
- * `src/sources/registry.ts`, and adding its upstream to the two proxy tables
- * (`vite.config.ts` and `nginx.conf.template`). No feature, hook or component
- * changes — they all depend on this interface rather than on any concrete API.
+ * The port every provider implements. Adding one means a new folder under
+ * `src/sources/`, a line in `registry.ts`, and an entry in the two proxy tables
+ * (`vite.config.ts`, `nginx.conf.template`).
  */
 export interface NewsSource {
   readonly id: SourceId
@@ -77,10 +59,8 @@ export interface NewsSource {
   capabilities(query: ArticleQuery): SourceCapabilities
 
   /**
-   * Fetch one page of articles.
-   *
-   * Implementations must honour `context.signal` so that superseded requests are
-   * cancelled rather than left to consume rate-limit budget.
+   * Must honour `context.signal`: a superseded request left running still
+   * spends rate-limit budget.
    *
    * @throws {NewsSourceError} on any non-success response.
    */
@@ -99,12 +79,7 @@ export class NewsSourceError extends Error {
     this.name = 'NewsSourceError'
   }
 
-  /**
-   * Message intended for end users rather than logs.
-   *
-   * Takes the display label rather than reading `sourceId`, so the UI shows
-   * "The New York Times" instead of the internal id `nytimes`.
-   */
+  /** Takes the display label so the UI shows "The New York Times", not `nytimes`. */
   describe(label: string): string {
     switch (this.kind) {
       case 'rate-limited':

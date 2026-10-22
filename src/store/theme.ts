@@ -1,22 +1,48 @@
 import { create } from 'zustand'
 
+/**
+ * `system` is a choice, not the absence of one — without it the first toggle
+ * permanently opts out of following the OS.
+ */
+export const THEME_CHOICES = ['light', 'dark', 'system'] as const
+export type ThemeChoice = (typeof THEME_CHOICES)[number]
+
+/** What is actually painted. `system` resolves to one of these. */
 export type Theme = 'light' | 'dark'
+
+export const THEME_LABELS: Record<ThemeChoice, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'System',
+}
 
 const STORAGE_KEY = 'newsstand.theme'
 
-function systemTheme(): Theme {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+function darkMediaQuery(): MediaQueryList | undefined {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
+  return window.matchMedia('(prefers-color-scheme: dark)')
 }
 
-export function readTheme(): Theme {
+function systemTheme(): Theme {
+  return darkMediaQuery()?.matches ? 'dark' : 'light'
+}
+
+/**
+ * Also read by the inline script in `index.html`, which prevents a flash of the
+ * wrong theme. Anything unrecognised follows the OS, matching that script.
+ */
+export function readChoice(): ThemeChoice {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'light' || stored === 'dark') return stored
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
     // Storage can be blocked; fall through to the system preference.
   }
-  return systemTheme()
+  return 'system'
+}
+
+export function resolveTheme(choice: ThemeChoice): Theme {
+  return choice === 'system' ? systemTheme() : choice
 }
 
 export function applyTheme(theme: Theme) {
@@ -25,27 +51,48 @@ export function applyTheme(theme: Theme) {
 }
 
 interface ThemeState {
+  choice: ThemeChoice
+  /** The resolved theme, for components that render a light/dark affordance. */
   theme: Theme
-  setTheme: (theme: Theme) => void
-  toggleTheme: () => void
+  setChoice: (choice: ThemeChoice) => void
+  /** Light → Dark → System → Light, for the single header control. */
+  cycleChoice: () => void
 }
 
-export const useTheme = create<ThemeState>((set, get) => ({
-  theme: readTheme(),
+/** The choice one step on from `choice`, so the control can name where it goes. */
+export function nextChoice(choice: ThemeChoice): ThemeChoice {
+  return THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length]!
+}
 
-  setTheme: (theme) => {
+const initialChoice = readChoice()
+
+export const useTheme = create<ThemeState>((set, get) => ({
+  choice: initialChoice,
+  theme: resolveTheme(initialChoice),
+
+  setChoice: (choice) => {
+    const theme = resolveTheme(choice)
     applyTheme(theme)
     try {
-      localStorage.setItem(STORAGE_KEY, theme)
+      localStorage.setItem(STORAGE_KEY, choice)
     } catch {
       // The class on <html> still switches for this visit.
     }
-    set({ theme })
+    set({ choice, theme })
   },
 
-  toggleTheme: () => {
-    get().setTheme(get().theme === 'dark' ? 'light' : 'dark')
+  cycleChoice: () => {
+    get().setChoice(nextChoice(get().choice))
   },
 }))
 
 applyTheme(useTheme.getState().theme)
+
+// While `system` is selected, an OS change has to reach the page without a reload.
+const media = darkMediaQuery()
+media?.addEventListener?.('change', () => {
+  if (useTheme.getState().choice !== 'system') return
+  const theme = systemTheme()
+  applyTheme(theme)
+  useTheme.setState({ theme })
+})

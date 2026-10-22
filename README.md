@@ -40,11 +40,15 @@ docker run --rm -p 8080:8080 \
 Or with Compose:
 
 ```bash
-docker compose up --build     # reads .env.local automatically
+docker compose up --build              # picks up .env.local if it is there
+HOST_PORT=8090 docker compose up       # when 8080 is already taken
 ```
 
-**Without any keys it still runs.** Leave `.env.local` blank and every provider serves its recorded
-sample; the header strip says so, per provider, and names the reason.
+**Without any keys it still runs** — and without an `.env.local` at all. Every provider then serves
+its recorded sample, and a notice above the feed says so, per provider, naming the reason. The three key
+variables are defaulted to empty at container start (`docker/15-api-key-defaults.envsh`) rather than
+in the image, because `envsubst` only substitutes variables that exist: an undefined one would leave
+a literal `${GUARDIAN_KEY}` in the nginx config and the container would refuse to boot.
 
 ## Local development
 
@@ -58,7 +62,7 @@ npm run dev                   # http://localhost:5173
 | -------------------- | -------------------------------------------- |
 | `npm run dev`        | Dev server with the API proxy                |
 | `npm run build`      | Typecheck then produce the production bundle |
-| `npm run test`       | Vitest suite (99 tests across 9 files)       |
+| `npm run test`       | Vitest suite (152 tests across 16 files)     |
 | `npm run test:watch` | Vitest in watch mode                         |
 | `npm run lint`       | ESLint — clean, no warnings                  |
 | `npm run format`     | Prettier                                     |
@@ -151,8 +155,10 @@ src/
     useArticles.ts   Fan out across sources, merge, dedupe, client-side fallbacks
     useFeedQuery.ts  Everything that decides *what to ask for* (Explore vs My Feed)
   features/          search · feed · preferences · data-mode
+  app/
+    ErrorBoundary.tsx  Last-resort fallback, so a render throw is not a blank page
   store/             Persisted preferences, theme, data mode (Zustand)
-  lib/               dedupe · dates · text · cn
+  lib/               dedupe · dates · text · authors · cn
 ```
 
 **Adding a fourth provider** means writing one folder, appending one line to
@@ -222,8 +228,10 @@ silently stopping.
 
 ### Live data and the demo sample
 
-The header strip offers **Auto**, **Live** and **Demo**. Auto is the default, and you can always get
-back to it.
+**Settings** (the gear in the header) offers **Auto**, **Live** and **Demo**. Auto is the default,
+and you can always get back to it. Whenever any provider is on its recorded sample the gear carries
+a dot and a notice above the feed names which, and why — putting the control behind a dialog must
+not put the disclosure there too.
 
 `GET /api/status` reports which keys are configured (booleans only — the keys stay on the server).
 Auto then:
@@ -260,13 +268,26 @@ path those hosts expose. Anything else under `/api/` returns 404.
 or failing provider surfaces as a notice while the others still render. Only when _every_ source
 fails does the page show an error state.
 
+Two failures sit outside that model and are handled separately.
+
+**Saved preferences are untrusted input.** `localStorage` outlives deploys, is shared with every
+tab, and can be edited by hand. An unknown source id in it is not cosmetic — `getSource` throws on
+one, which would take the page down before the first render — so the stored value is narrowed to the
+vocabulary the app knows as it rehydrates (`sanitizePreferences`), field by field: one bad entry is
+dropped, not the whole saved state.
+
+**A render throw is caught.** Everything expected — a rejected key, an empty result, a rate limit —
+is already modelled as state and rendered as a notice. `ErrorBoundary` catches the unexpected one
+and offers both a retry and a reset of the saved choices, since those are the one input that can
+reproduce a crash on every reload.
+
 ## Testing
 
 ```bash
 npm run test
 ```
 
-99 tests across 9 files.
+152 tests across 16 files.
 
 - **Mappers** are tested against **recorded live API responses** (`src/samples/`), not hand-written
   guesses. This caught two real discrepancies: the NYT's current `multimedia` field is an object of
@@ -289,6 +310,10 @@ npm run test
 - **App** exercises search debouncing, every filter, per-source failure, the Auto/Live/Demo
   round-trip, and preference persistence through the real adapters, with only `fetch` replaced.
 
+`.github/workflows/ci.yml` runs lint, the type check, the suite and a production build on every
+push and pull request, and separately builds the image and asserts that a container with **no API
+keys at all** comes up and serves — the path the quick start above promises.
+
 The samples double as the data Demo mode serves, so UI work never spends NewsAPI's 100-request daily
 budget. They live under `src/samples/` rather than in a test folder because production owns them;
 the tests borrow them.
@@ -309,8 +334,10 @@ to the palette, the radius rhythm or the elevation scale is a one-file edit:
   grey so cards sit on the cool paper ground instead of floating above a different one.
 
 Dark mode rewrites the same tokens under `html.dark`, so no component carries a second set of
-classes. An inline script in `index.html` applies the stored choice before first paint, so there is
-no flash of the wrong theme.
+classes. The header control cycles **Light → Dark → System**, naming both the current choice and the
+next one in its accessible label; `system` is a stored choice rather than the absence of one, so a
+reader who tries dark mode can hand control back to the OS. The same inline script in `index.html`
+applies it before first paint, so there is no flash of the wrong theme.
 
 Fonts are **self-hosted** (`src/fonts.css`, `public/fonts`, Latin and Latin-Extended subsets only).
 Linking them from Google would make an otherwise self-contained container depend on a third-party
@@ -319,6 +346,27 @@ host at runtime, and behind a restrictive network both faces would fall back sil
 Shared primitives live in `src/components/ui/`: `Button`, `Chip`, `Toggle`, `SegmentedControl` and
 `Dialog`. `Chip` in particular was extracted because the filter panel, the preferences dialog and
 the mobile category rail each had their own copy of the same class list.
+
+## Search, filters and personalisation
+
+- **Applied filters are stated where the results are.** Every narrowing in force — each selected
+  source, each category, the date range as one entry — is a chip above the feed, and tapping it
+  removes that one. The whole chip is the control rather than a small ✕ inside it, so the target is
+  the full 40 px rather than 24. The controls themselves live in a sidebar on desktop and behind a
+  sheet on a phone, which is exactly the width where nothing on the page used to say what was
+  applied. "Clear all" resets the filters and deliberately leaves the keyword alone — the search box
+  is its own control, and emptying it from elsewhere reads as a bug.
+- **Browsing and data mode live in one Settings dialog.** Pages or Infinite, and Auto, Live or
+  Demo. Both were previously loose controls competing with the search box and the feed header for
+  the top of a phone screen; neither is touched often enough to earn that space.
+- **My Feed asks before it pretends.** With nothing saved, a personalised feed _is_ the unfiltered
+  feed, so presenting it under that label would be untrue. It shows a prompt instead, and makes no
+  request until there is something to personalise with.
+- **Authors are offered, not guessed at.** Author matching only works on names the providers
+  actually publish — "Fiona Harvey" matches, "F. Harvey" silently matches nothing. Personalise lists
+  the contributors found in pages already in the query cache, so the common case is a tap rather
+  than a typed guess. Nothing is fetched for it: an autocomplete that spent NewsAPI's 100 daily
+  requests would be a poor trade.
 
 ## Mobile
 
@@ -339,9 +387,16 @@ Mobile is treated as its own layout rather than a narrowed desktop:
 - **The filter panel sizes itself with a container query, not a media query**, because it is ~232px
   wide in the sidebar but ~335px inside the sheet. Keying off the viewport gave two crushed date
   inputs on desktop and two needlessly stacked ones on a phone — exactly backwards.
-- **Touch targets** are at least 44px below `lg` — including the Auto/Live/Demo and Pages/Infinite
-  tracks, which drop to 32px only from `lg`, where a precise cursor is available.
+- **Touch targets** are at least 40px below `lg`, dropping to 32px only from `lg`, where a precise
+  cursor is available.
 - Search inputs are 16px on mobile specifically, below which iOS Safari zooms the viewport on focus.
+- **Infinite scroll holds your place.** Merged pages are sorted by recency across providers, and
+  NewsAPI delays its articles by up to 24 hours — so page 2 of a live provider lands _above_ page 1
+  of a lagging one and pushes the card being read down the viewport. `ReadingAnchor` measures the
+  first card below the sticky header immediately before the new list commits, and scrolls by however
+  far it moved. It is a class component because `getSnapshotBeforeUpdate` has no hook equivalent,
+  and a cached scroll position cannot stand in for it: lazily loaded images resize cards between
+  scroll events, so a position recorded earlier is stale by the time the merge lands.
 
 Measured in headless Chromium at 320 / 375 / 390 / 430 / 768 / 1024 / 1280 by walking the rendered
 DOM: `scrollWidth === clientWidth` at every width (no horizontal scroll), and no interactive element

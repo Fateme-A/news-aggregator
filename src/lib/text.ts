@@ -1,8 +1,7 @@
 /**
- * Several providers return HTML inside fields we render as plain text
- * (The Guardian's `trailText` contains `<strong>`, for example). We strip rather
- * than render it: article summaries are untrusted third-party content, so they
- * must never reach `dangerouslySetInnerHTML`.
+ * Several providers return HTML in fields rendered as plain text (The
+ * Guardian's `trailText`). Summaries are untrusted third-party content, so
+ * they are stripped rather than rendered.
  */
 export function stripHtml(input: string): string {
   return input
@@ -17,13 +16,7 @@ export function stripHtml(input: string): string {
     .trim()
 }
 
-/**
- * Normalise an author string for comparison.
- *
- * Providers disagree on byline formatting — the NYT prefixes with `"By "`, the
- * others do not — so author filtering compares normalised forms rather than raw
- * strings.
- */
+/** Byline formats differ — the NYT prefixes with "By " — so compare normalised forms. */
 export function normaliseAuthor(input: string): string {
   return input
     .replace(/^by\s+/i, '')
@@ -42,12 +35,7 @@ export function splitByline(byline: string): string[] {
     .filter(Boolean)
 }
 
-/**
- * "1 category" / "3 categories".
- *
- * Trivial, but it is the kind of detail that makes an interface read as
- * finished — and it appeared in three separate places in the feed header.
- */
+/** "1 category" / "3 categories". */
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`
 }

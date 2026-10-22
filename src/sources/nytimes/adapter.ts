@@ -12,32 +12,22 @@ const NYT_PAGE_SIZE = 10
 const NYT_MAX_PAGES = 100
 
 /**
- * NYT Article Search v2.
+ * NYT Article Search v2. Deepest archive (1851), tightest rate limit —
+ * 5 requests/minute, 500/day — which is why the keyword is debounced and
+ * `staleTime` is long.
  *
- * Deepest archive of the three (back to 1851) and the richest byline data, but
- * the tightest rate limit — 5 requests/minute, 500/day. That ceiling is why the
- * keyword input is debounced and why TanStack Query is configured with a long
- * `staleTime`; this adapter would otherwise trip a 429 during normal typing.
+ * No `fq` is sent. The documented Lucene filter returns nothing on the free
+ * tier; measured live with a valid key, same minute, HTTP 200 throughout:
  *
- * ## Why there is no `fq`
+ *   q=climate                            -> 10,000 hits
+ *   q=climate & fq=news_desk:("Climate") ->      0 hits, docs: null
+ *   fq=news_desk:("Foreign")             ->      0 hits  (desk exists in the data)
+ *   fq=document_type:("article")         ->      0 hits  (trivially true)
+ *   fq=glocations:("Iraq")               ->      0 hits  (NYT's own example)
  *
- * Article Search documents a Lucene `fq` parameter for filtering by news desk,
- * section and byline, and an earlier version of this adapter used it. It does
- * not work on the free tier. Measured against the live API with a valid key,
- * same minute, HTTP 200 on every call:
- *
- *   q=climate                              -> 10,000 hits
- *   q=climate & fq=news_desk:("Climate")   ->      0 hits, docs: null
- *   fq=news_desk:("Foreign")               ->      0 hits   (desk exists in the data)
- *   fq=section_name:("World")              ->      0 hits
- *   fq=document_type:("article")           ->      0 hits   (trivially true filter)
- *   fq=glocations:("Iraq")                 ->      0 hits   (NYT's own doc example)
- *
- * Any `fq` empties the result set, including filters that cannot possibly match
- * nothing. Sending it would silently drop the NYT out of every filtered feed,
- * which is worse than not filtering, so category and author are declared
- * unsupported and `useArticles` narrows this provider's results in the browser
- * instead. `begin_date`/`end_date` are unaffected and still applied upstream.
+ * Sending it would drop the NYT out of every filtered feed, so category and
+ * author are declared unsupported and narrowed in the browser instead.
+ * `begin_date`/`end_date` are unaffected and still go upstream.
  */
 export const nytimesSource: NewsSource = {
   id: 'nytimes',

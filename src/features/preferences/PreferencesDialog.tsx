@@ -2,12 +2,15 @@ import { CATEGORY_ICONS, SOURCE_ICONS } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Dialog } from '@/components/ui/Dialog'
+import { Section } from '@/components/ui/Section'
 import { Toggle } from '@/components/ui/Toggle'
 import { CATEGORIES, CATEGORY_LABELS } from '@/domain/article'
+import { useAuthorSuggestions } from '@/features/preferences/use-author-suggestions'
+import { normaliseAuthor } from '@/lib/text'
 import { SOURCES } from '@/sources/registry'
 import { usePreferences } from '@/store/preferences'
-import { IconX } from '@tabler/icons-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { IconPlus, IconX } from '@tabler/icons-react'
+import { useState, type FormEvent } from 'react'
 
 interface PreferencesDialogProps {
   open: boolean
@@ -15,8 +18,8 @@ interface PreferencesDialogProps {
 }
 
 export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps) {
-  // Selectors rather than the whole store: an unselected `usePreferences()`
-  // re-renders this dialog on every unrelated preference change.
+  // Selectors, not the whole store: an unselected `usePreferences()` re-renders
+  // on every unrelated change.
   const sources = usePreferences((state) => state.sources)
   const categories = usePreferences((state) => state.categories)
   const authors = usePreferences((state) => state.authors)
@@ -26,6 +29,11 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
   const removeAuthor = usePreferences((state) => state.removeAuthor)
   const reset = usePreferences((state) => state.reset)
   const [authorDraft, setAuthorDraft] = useState('')
+
+  const chosen = new Set(authors.map(normaliseAuthor))
+  const suggestions = useAuthorSuggestions(open).filter(
+    (name) => !chosen.has(normaliseAuthor(name)),
+  )
 
   function handleAddAuthor(event: FormEvent) {
     event.preventDefault()
@@ -51,7 +59,7 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
       }
     >
       <div className="divide-y divide-border">
-        <Group title="Preferred sources" first>
+        <Section title="Preferred sources" first>
           <div className="space-y-1.5">
             {SOURCES.map((source) => (
               <Toggle
@@ -63,9 +71,9 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
               />
             ))}
           </div>
-        </Group>
+        </Section>
 
-        <Group title="Preferred categories">
+        <Section title="Preferred categories">
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((category) => (
               <Chip
@@ -78,9 +86,9 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
               </Chip>
             ))}
           </div>
-        </Group>
+        </Section>
 
-        <Group title="Preferred authors">
+        <Section title="Preferred authors">
           <form onSubmit={handleAddAuthor} className="flex gap-2">
             <label htmlFor="author-input" className="sr-only">
               Add an author
@@ -117,32 +125,28 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
             </ul>
           )}
 
+          {suggestions.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 text-xs text-subtle">In the articles you have loaded</p>
+              <ul className="flex flex-wrap gap-2">
+                {suggestions.map((name) => (
+                  <li key={name} className="min-w-0">
+                    <Chip icon={IconPlus} onClick={() => addAuthor(name)} className="max-w-full">
+                      <span className="truncate">{name}</span>
+                    </Chip>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <p className="mt-3 text-xs leading-relaxed text-subtle">
             {authors.length > 0
               ? 'The New York Times and NewsAPI cannot filter by author upstream, so their results are narrowed in the browser.'
               : 'Add an author to narrow My Feed to their work.'}
           </p>
-        </Group>
+        </Section>
       </div>
     </Dialog>
-  )
-}
-
-function Group({
-  title,
-  children,
-  first,
-}: {
-  title: string
-  children: ReactNode
-  first?: boolean
-}) {
-  return (
-    <section className={first ? 'pb-5' : 'py-5'}>
-      <h3 className="mb-3 text-[11px] font-semibold tracking-[0.14em] text-subtle uppercase">
-        {title}
-      </h3>
-      {children}
-    </section>
   )
 }

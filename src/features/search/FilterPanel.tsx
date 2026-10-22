@@ -1,12 +1,12 @@
 import { CATEGORY_ICONS, SOURCE_ICONS } from '@/components/icons'
 import { Chip } from '@/components/ui/Chip'
+import { Section } from '@/components/ui/Section'
 import { Toggle } from '@/components/ui/Toggle'
 import type { Category, SourceId } from '@/domain/article'
 import { CATEGORIES, CATEGORY_LABELS } from '@/domain/article'
 import { createEmptyQuery } from '@/domain/query'
 import { todayIso } from '@/lib/dates'
 import { SOURCES } from '@/sources/registry'
-import type { ReactNode } from 'react'
 
 export interface FilterValues {
   sources: SourceId[]
@@ -122,28 +122,6 @@ export function FilterPanel({
         </button>
       </div>
     </div>
-  )
-}
-
-function Section({
-  title,
-  action,
-  children,
-  first,
-}: {
-  title: string
-  action?: ReactNode
-  children: ReactNode
-  first?: boolean
-}) {
-  return (
-    <section className={first ? 'pb-5' : 'py-5'}>
-      <h3 className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold tracking-[0.14em] text-subtle uppercase">
-        {title}
-        {action}
-      </h3>
-      {children}
-    </section>
   )
 }
 

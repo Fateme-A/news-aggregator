@@ -24,6 +24,12 @@ function articleItems() {
   return screen.queryAllByRole('listitem')
 }
 
+/** Browsing and data mode live behind the header's Settings button. */
+async function openSettings(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^settings/i }))
+  await screen.findByRole('group', { name: 'Browsing' })
+}
+
 beforeEach(() => {
   localStorage.clear()
   usePreferences.getState().reset()
@@ -377,6 +383,7 @@ describe('App', () => {
 
     it('switches to the personalised feed on demand', async () => {
       const user = userEvent.setup()
+      usePreferences.getState().toggleCategory('science')
       mockApi()
       renderApp()
 
@@ -386,6 +393,45 @@ describe('App', () => {
 
       expect(await screen.findByText(/showing your personalised feed/i)).toBeInTheDocument()
       expect(usePreferences.getState().mode).toBe('my-feed')
+    })
+
+    it('asks for choices instead of serving an unfiltered feed as a personalised one', async () => {
+      const user = userEvent.setup()
+      const { requests } = mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      const beforeSwitch = requests.length
+
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+
+      expect(await screen.findByText(/nothing saved yet/i)).toBeInTheDocument()
+      expect(articleItems()).toHaveLength(0)
+      // Nothing to personalise with means nothing worth spending a request on.
+      expect(requests).toHaveLength(beforeSwitch)
+      // …and it must not claim to be showing a personalised feed.
+      expect(screen.queryByText(/showing your personalised feed/i)).not.toBeInTheDocument()
+    })
+
+    it('loads the personalised feed as soon as there is a choice to apply', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+      await screen.findByText(/nothing saved yet/i)
+
+      // The empty state's own call to action opens Personalise. The header and
+      // the sidebar offer it too, so scope to the feed.
+      const feed = within(screen.getByRole('main'))
+      await user.click(feed.getByRole('button', { name: /^personalise$/i }))
+      await user.type(await screen.findByLabelText(/add an author/i), 'Fiona Harvey')
+      await user.click(screen.getByRole('button', { name: /^add$/i }))
+      await user.click(screen.getByRole('button', { name: /^done$/i }))
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      expect(screen.queryByText(/nothing saved yet/i)).not.toBeInTheDocument()
     })
   })
 
@@ -414,7 +460,9 @@ describe('App', () => {
       await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
       const firstPage = requests.length
 
+      await openSettings(user)
       await user.click(screen.getByRole('button', { name: 'Infinite' }))
+      await user.click(screen.getByRole('button', { name: /^done$/i }))
 
       await waitFor(() => {
         expect(requests.some((url) => /[?&]page=2(?:&|$)/.test(url))).toBe(true)
@@ -422,7 +470,10 @@ describe('App', () => {
       expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
       expect(requests.length).toBeGreaterThan(firstPage)
 
+      await openSettings(user)
       await user.click(screen.getByRole('button', { name: 'Pages' }))
+      await user.click(screen.getByRole('button', { name: /^done$/i }))
+
       expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument()
       expect(usePreferences.getState().browseMode).toBe('pages')
     })
@@ -452,6 +503,7 @@ describe('App', () => {
 
       await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
 
+      await openSettings(user)
       await user.click(screen.getByRole('button', { name: 'Demo' }))
       expect(useDataMode.getState().preference).toBe('demo')
 
@@ -470,11 +522,160 @@ describe('App', () => {
       await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
       const liveRequests = requests.length
 
+      await openSettings(user)
       await user.click(screen.getByRole('button', { name: 'Demo' }))
+      await user.click(screen.getByRole('button', { name: /^done$/i }))
 
       expect(await screen.findByText(/no requests are sent to the news apis/i)).toBeInTheDocument()
       expect(requests).toHaveLength(liveRequests)
       expect(useDataMode.getState().preference).toBe('demo')
+    })
+  })
+  describe('applied filters', () => {
+    it('states a selected filter where the results are, and removes it on demand', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      expect(screen.queryByRole('list', { name: /applied filters/i })).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: /^science$/i })[0]!)
+
+      const applied = within(await screen.findByRole('list', { name: /applied filters/i }))
+      expect(applied.getByText('Science')).toBeInTheDocument()
+
+      await user.click(applied.getByRole('button', { name: /remove filter: science/i }))
+
+      await waitFor(() =>
+        expect(screen.queryByRole('list', { name: /applied filters/i })).not.toBeInTheDocument(),
+      )
+    })
+
+    it('collapses a date range into one filter and clears both ends together', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await user.type(screen.getByLabelText('From'), '2026-01-01')
+      await user.type(screen.getByLabelText('To'), '2026-02-01')
+
+      const applied = within(await screen.findByRole('list', { name: /applied filters/i }))
+      const chips = applied.getAllByRole('listitem')
+      expect(chips).toHaveLength(1)
+
+      await user.click(applied.getByRole('button', { name: /remove filter:/i }))
+
+      await waitFor(() => expect(screen.getByLabelText('From')).toHaveValue(''))
+      expect(screen.getByLabelText('To')).toHaveValue('')
+    })
+
+    it('leaves the keyword alone when the filters are cleared', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await user.type(screen.getByLabelText(/search articles/i), 'climate')
+      await user.click(screen.getAllByRole('button', { name: /^science$/i })[0]!)
+      await user.click(screen.getAllByRole('button', { name: /^health$/i })[0]!)
+
+      const applied = await screen.findByRole('list', { name: /applied filters/i })
+      await user.click(screen.getByRole('button', { name: /^clear all$/i }))
+
+      await waitFor(() => expect(applied).not.toBeInTheDocument())
+      // The search box is the keyword's own control; clearing filters from
+      // elsewhere must not empty it behind the reader's back.
+      expect(screen.getByLabelText(/search articles/i)).toHaveValue('climate')
+    })
+  })
+
+  describe('author suggestions', () => {
+    it('offers contributors from the loaded feed instead of asking for a name from memory', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      await user.click(screen.getByRole('button', { name: /personalise/i }))
+
+      const suggestion = await screen.findByRole('button', { name: /^Fiona Harvey$/ })
+      await user.click(suggestion)
+
+      expect(usePreferences.getState().authors).toContain('Fiona Harvey')
+      // Once chosen it stops being a suggestion and becomes a removable choice.
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /remove fiona harvey/i })).toBeInTheDocument(),
+      )
+    })
+  })
+
+  describe('settings', () => {
+    it('gathers browsing and data mode behind one control', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      expect(screen.queryByRole('group', { name: 'Browsing' })).not.toBeInTheDocument()
+
+      await openSettings(user)
+
+      const browsing = within(screen.getByRole('group', { name: 'Browsing' }))
+      expect(browsing.getByRole('button', { name: 'Pages' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(browsing.getByRole('button', { name: 'Infinite' })).toBeInTheDocument()
+
+      const data = within(screen.getByRole('group', { name: 'Article data' }))
+      for (const name of ['Auto', 'Live', 'Demo']) {
+        expect(data.getByRole('button', { name })).toBeInTheDocument()
+      }
+    })
+
+    it('flags on the button itself that the feed is on sample articles', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument()
+
+      await openSettings(user)
+      await user.click(screen.getByRole('button', { name: 'Demo' }))
+      await user.click(screen.getByRole('button', { name: /^done$/i }))
+
+      // Hiding the controls must not hide the fact that nothing is live.
+      expect(
+        await screen.findByRole('button', { name: /settings — showing sample articles/i }),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('theme', () => {
+    it('cycles light, dark and back to following the system', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+
+      // The control names where it is and where the next press goes, so the
+      // three-way choice is legible without sight of the icon.
+      const read = () => screen.getByRole('button', { name: /^Theme:/ })
+      expect(read()).toHaveAccessibleName(/Theme: System\. Switch to light\./)
+
+      await user.click(read())
+      expect(read()).toHaveAccessibleName(/Theme: Light\. Switch to dark\./)
+
+      await user.click(read())
+      expect(read()).toHaveAccessibleName(/Theme: Dark\. Switch to system\./)
+      expect(document.documentElement).toHaveClass('dark')
+
+      await user.click(read())
+      expect(read()).toHaveAccessibleName(/Theme: System\. Switch to light\./)
     })
   })
 })

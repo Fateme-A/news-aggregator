@@ -26,12 +26,9 @@ function classify(status: number): NewsSourceError['kind'] {
 }
 
 /**
- * The one place a request leaves the app.
- *
- * Owns transport concerns only — timeout, cancellation, status-to-error mapping,
- * and handing off to the recorded sample when the caller's `FetchContext` says
- * to. It reads no store and no environment: everything it needs about *how* to
- * serve the request arrives as an argument.
+ * The one place a request leaves the app. Transport only: timeout,
+ * cancellation, status-to-error mapping, and handing off to the recorded
+ * sample when `FetchContext` says to. Reads no store and no environment.
  */
 export async function fetchJson<T>(
   sourceId: SourceId,

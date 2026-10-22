@@ -1,9 +1,8 @@
 import type { Article } from '@/domain/article'
 
 /**
- * Aggregating several providers means the same story can arrive more than once —
- * NewsAPI syndicates outlets that The Guardian and the NYT also publish directly.
- * Showing it twice looks like a bug, so near-duplicates are collapsed.
+ * NewsAPI syndicates outlets that The Guardian and the NYT also publish
+ * directly, so the same story can arrive twice. Near-duplicates are collapsed.
  */
 
 /** Canonical URL ignoring tracking parameters and trailing slashes. */
@@ -29,10 +28,8 @@ function titleKey(title: string): string {
 }
 
 /**
- * Two articles with the same headline are the same story only if they were
- * published at roughly the same time. Without this window, recurring headlines
- * — "Morning briefing", "What we know so far", a weekly column title — would
- * collapse months of coverage into a single card.
+ * Recurring headlines ("Morning briefing", a weekly column) are only the same
+ * story when published close together.
  */
 const SAME_STORY_WINDOW_MS = 48 * 60 * 60 * 1000
 
@@ -44,14 +41,12 @@ function titleBucket(iso: string): string {
 }
 
 /**
- * Removes duplicates, keeping the first occurrence.
+ * Removes duplicates, keeping the first occurrence — callers sort first so
+ * that is the preferred copy.
  *
- * Callers sort before deduping so that "first" is the preferred copy — see
- * `mergeArticles`, which orders by recency so the freshest version survives.
- *
- * A URL match is conclusive on its own. A title match is not, so it is scoped
- * to a 48-hour window and checked against the adjacent bucket as well, which
- * stops a story that straddles a bucket boundary from slipping through.
+ * A URL match is conclusive. A title match is scoped to a 48-hour window, and
+ * the adjacent bucket is checked too so a story straddling a boundary still
+ * matches.
  */
 export function dedupeArticles(articles: Article[]): Article[] {
   const seen = new Set<string>()

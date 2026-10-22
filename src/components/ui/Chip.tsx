@@ -4,7 +4,12 @@ import type { ReactNode } from 'react'
 
 interface ChipProps {
   children: ReactNode
-  selected: boolean
+  /**
+   * Toggle state. Omit it for chips that perform an action rather than switch
+   * something on and off — an `aria-pressed="false"` that never becomes true
+   * tells a screen reader the control is a toggle when it is a button.
+   */
+  selected?: boolean
   onClick: () => void
   icon?: AppIcon
   className?: string

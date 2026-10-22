@@ -1,6 +1,13 @@
+import { Button } from '@/components/ui/Button'
 import type { SourceFailure } from '@/hooks/useArticles'
 import { cn } from '@/lib/cn'
-import { IconAlertCircle, IconAlertTriangle, IconList, IconSearch } from '@tabler/icons-react'
+import {
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconList,
+  IconSearch,
+  IconStar,
+} from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 
 export function FeedSkeleton({ count = 7 }: { count?: number }) {
@@ -90,6 +97,27 @@ export function EmptyState({ onReset }: { onReset?: () => void }) {
       }
     >
       Try a different keyword, widen the date range, or remove a filter.
+    </Placeholder>
+  )
+}
+
+/**
+ * My Feed with nothing saved. A personalised feed would be the unfiltered feed,
+ * so it asks for choices instead — and makes no request until it has some.
+ */
+export function PersonaliseState({ onPersonalise }: { onPersonalise: () => void }) {
+  return (
+    <Placeholder
+      icon={<IconStar size={22} stroke={1.75} />}
+      title="Nothing saved yet"
+      action={
+        <Button variant="primary" onClick={onPersonalise}>
+          Personalise
+        </Button>
+      }
+    >
+      Choose the sources, categories and authors you want to follow, and My Feed will show only
+      their articles.
     </Placeholder>
   )
 }

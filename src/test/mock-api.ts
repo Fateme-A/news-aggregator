@@ -6,17 +6,14 @@ import { vi } from 'vitest'
 
 /**
  * Routes `fetch` to the recorded samples, honouring the parameters it is sent.
+ * Component tests run the real adapters and merge pipeline; only the network
+ * boundary is replaced.
  *
- * Component tests exercise the real adapters and the real merge/dedupe pipeline —
- * only the network boundary is replaced. That keeps them honest about the wire
- * formats while never spending the providers' request quota.
- *
- * The filtering below matters more than it looks. A fake that returns the same
- * page whatever it is asked is useless for asserting that a filter *worked*:
- * every such test passes by accident. So this one applies the parameters each
- * provider genuinely applies upstream — and nothing more, so that a filter the
- * provider does not support stays unapplied here too, and the client-side
- * fallback in `useArticles` is what the test actually measures.
+ * The filtering matters: a fake that returns the same page whatever it is
+ * asked makes every filter test pass by accident. This applies exactly what
+ * each provider applies upstream and nothing more, so a filter the provider
+ * does not support stays unapplied here too and the client-side fallback is
+ * what the test measures.
  */
 
 export interface MockApiOptions {

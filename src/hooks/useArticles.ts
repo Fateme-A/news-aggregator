@@ -15,7 +15,7 @@ import { useDataMode, type SourceDelivery } from '@/store/data-mode'
 import { keepPreviousData, useQueries, type UseQueryResult } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 
-/** Upper bound on infinite scroll, so a long session cannot drain a daily quota. */
+/** Caps infinite scroll so a long session cannot drain a daily quota. */
 export const MAX_PAGES = 25
 
 export interface SourceFailure {
@@ -54,12 +54,9 @@ function withinRange(iso: string, from?: string, to?: string): boolean {
 }
 
 /**
- * Re-apply, in the browser, every filter this provider did not apply upstream.
- *
- * This is the other half of `SourceCapabilities`: a provider declares what it
- * honoured for this query, and anything it did not is enforced here. Without
- * this the flags would be documentation rather than behaviour — and a filtered
- * feed would quietly include articles that do not match.
+ * Enforces every filter the provider reported it could not apply upstream.
+ * Without this the capability flags would be documentation rather than
+ * behaviour, and a filtered feed would include articles that do not match.
  */
 function applyClientSideFilters(
   page: ArticlePage,
@@ -108,13 +105,11 @@ interface FetchedPage extends ArticlePage {
 }
 
 /**
- * One page of the merged feed, or every page up to `page` when accumulating.
+ * One page of the merged feed, or pages 1…N when accumulating.
  *
- * Infinite scroll is not a second data path: it asks for pages 1…N instead of
- * page N. Every page but the newest is already in the TanStack Query cache, so
- * re-requesting them costs nothing and no request leaves the browser — which is
- * why the feed needs no accumulator state, no refs mirroring state, and no
- * effect to keep them in step. The rendered list is derived from the cache.
+ * Infinite scroll asks for 1…N rather than N; every page but the newest is
+ * already cached, so no extra request leaves the browser and the list needs no
+ * accumulator state to drift out of sync with.
  */
 export function useArticles(
   query: ArticleQuery,
@@ -139,14 +134,11 @@ export function useArticles(
   )
 
   /**
-   * Fold the per-source, per-page results into one feed.
+   * Folds the per-source, per-page results into one feed.
    *
-   * This runs inside `combine` rather than a `useMemo` in the component body
-   * because `useQueries` hands back a fresh array every render while the
-   * results inside it keep their identity. TanStack re-runs `combine` only when
-   * one of those results actually changes, which is the memoisation we want —
-   * and it is worth having: at the page cap this merges, sorts and dedupes up
-   * to 900 articles, and the component re-renders on every keystroke.
+   * In `combine` rather than a `useMemo`: `useQueries` returns a fresh array
+   * each render, so a memo keyed on it would never hit. At the page cap this
+   * merges and dedupes ~900 articles on every keystroke.
    */
   const combine = useCallback(
     (results: UseQueryResult<FetchedPage, Error>[]) => {

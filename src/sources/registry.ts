@@ -5,11 +5,8 @@ import { newsapiSource } from './newsapi/adapter'
 import { nytimesSource } from './nytimes/adapter'
 
 /**
- * The single extension point.
- *
- * Adding a fourth provider means writing `src/sources/<name>/{adapter,mapper,types}.ts`
- * and appending it to this array. No feature, hook or component changes — they
- * all depend on the `NewsSource` interface rather than on any concrete provider.
+ * The single extension point. A fourth provider is
+ * `src/sources/<name>/{adapter,mapper,types}.ts` plus a line in this array.
  */
 export const SOURCES: readonly NewsSource[] = [guardianSource, nytimesSource, newsapiSource]
 

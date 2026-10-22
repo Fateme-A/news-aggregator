@@ -1,11 +1,9 @@
 import type { Article, Category, SourceId } from './article'
 
 /**
- * A provider-agnostic description of what the user is asking for.
- *
- * Adapters translate this into their own query parameters. Anything a given
- * provider cannot express server-side is declared via its `SourceCapabilities`
- * and applied client-side instead — see `src/hooks/useArticles.ts`.
+ * A provider-agnostic description of what the user is asking for. Adapters
+ * translate it; anything a provider cannot express server-side is declared in
+ * its `SourceCapabilities` and applied client-side instead.
  */
 export interface ArticleQuery {
   /** Free-text search. Empty string means "no keyword constraint". */
@@ -45,11 +43,9 @@ export function createEmptyQuery(): ArticleQuery {
 }
 
 /**
- * Stable cache key for a query as seen by one source.
- *
- * Arrays are sorted so that selecting categories in a different order does not
- * produce a cache miss — which matters directly against NewsAPI's 100 requests
- * per day and the NYT's 5 per minute.
+ * Stable cache key for a query as seen by one source. Arrays are sorted so a
+ * different selection order is not a cache miss, which costs real quota
+ * against NewsAPI's 100/day and the NYT's 5/minute.
  */
 export function queryCacheKey(sourceId: SourceId, query: ArticleQuery): unknown[] {
   return [

@@ -14,28 +14,21 @@ import newsapiHeadlinesSample from '@/samples/newsapi-topheadlines.json'
 import nytSample from '@/samples/nyt-search.json'
 
 /**
- * Serving recorded samples when a provider cannot be called.
+ * Serves recorded samples when a provider cannot be called.
  *
- * Two pieces of module state, both deliberately transport-level rather than
- * application-level:
+ * `deliveries` records what each source last returned, so the UI can name the
+ * reason. `suppressed` is a circuit breaker: once a provider answers 429 or
+ * 401 in Auto mode, further calls go straight to the sample rather than spend
+ * more of a 100-request daily budget.
  *
- * - `deliveries` records what each source last returned, so the UI can say
- *   "sample articles for The Guardian (no API key is configured)".
- * - `suppressed` is a circuit breaker. Once a provider has answered 429 or 401
- *   in Auto mode there is no point spending more of a 100-request daily budget
- *   on it, so subsequent calls go straight to the sample until the reader
- *   changes mode.
- *
- * Neither reads a store: the mode arrives in `FetchContext`, resolved by
- * `useArticles`. That keeps `sources/` free of application state and makes all
- * of this testable by passing a value.
+ * Neither reads a store — the mode arrives in `FetchContext`.
  */
 
 const deliveries = new Map<SourceId, Delivery>()
 const suppressed = new Map<SourceId, DemoReason>()
 let lastMode: DataMode | undefined
 
-/** A change of mode is the reader's cue that they want the breakers reset. */
+/** Changing mode resets the breakers. */
 function syncMode(mode: DataMode): void {
   if (mode === lastMode) return
   lastMode = mode
@@ -50,7 +43,7 @@ export function readDelivery(sourceId: SourceId): Delivery {
   return deliveries.get(sourceId) ?? { origin: 'live' }
 }
 
-/** Test seam: the maps outlive a single render by design, so tests must reset them. */
+/** The maps outlive a render by design, so tests must reset them. */
 export function resetDeliveryState(): void {
   deliveries.clear()
   suppressed.clear()
@@ -71,11 +64,7 @@ function sampleFor(sourceId: SourceId, url: string): unknown {
   return url.includes('top-headlines') ? newsapiHeadlinesSample : newsapiEverythingSample
 }
 
-/**
- * Decide how this request should be served, before any network call.
- *
- * Returns `'live'` to go to the network, or the reason to serve the sample.
- */
+/** Returns `'live'` to go to the network, or the reason to serve the sample. */
 export function planDelivery(sourceId: SourceId, context: FetchContext): 'live' | DemoReason {
   syncMode(context.mode)
 
@@ -107,11 +96,9 @@ export function demoPayload<T>(
 }
 
 /**
- * Apply the query to a recorded page in the browser.
- *
- * The sample is one fixed page, so a search can only surface stories that are
- * already in the recording. Narrowing it is what stops Demo mode from looking
- * like the filters are broken.
+ * Applies the query to the recorded page. The sample is one fixed page, so a
+ * search only surfaces stories already in the recording — but without this,
+ * Demo mode looks like the filters are broken.
  */
 export function narrowSample(articles: readonly Article[], query: ArticleQuery): Article[] {
   const keyword = query.keyword.trim().toLowerCase()

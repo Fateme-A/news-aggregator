@@ -3,16 +3,12 @@ import { stripHtml } from '@/lib/text'
 import type { NytDoc } from './types'
 
 /**
- * Canonical category → NYT news desks.
+ * Canonical category → NYT news desks. The reverse lookup is derived, not
+ * written twice. Matched case-insensitively: the NYT is inconsistent
+ * ("OpEd", "Foreign", "RealEstate").
  *
- * Same single-table pattern as the Guardian mapper: the reverse lookup is
- * derived, never written twice. Desk names are matched case-insensitively
- * because the NYT is inconsistent about casing ("OpEd", "Foreign", "RealEstate").
- *
- * This table is now used in one direction only. It used to build an `fq` clause
- * as well, but that parameter returns nothing on the free tier (see
- * `adapter.ts`), so the NYT declares `categoryFilter: false` and `useArticles`
- * matches on the category this mapper assigns instead.
+ * Used in one direction only — `fq` returns nothing on the free tier (see
+ * `adapter.ts`), so the category this assigns is what `useArticles` matches on.
  */
 export const CATEGORY_TO_DESKS: Record<Category, string[]> = {
   business: ['Business', 'BusinessDay', 'Financial', 'RealEstate', 'Jobs'],

@@ -1,21 +1,24 @@
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
-import { DataModeBar } from '@/features/data-mode/DataModeBar'
+import { DataModeNotice } from '@/features/data-mode/DataModeNotice'
 import { ArticleGrid } from '@/features/feed/ArticleGrid'
-import { BrowseModeSwitch } from '@/features/feed/BrowseModeSwitch'
+import { ReadingAnchor } from '@/features/feed/ReadingAnchor'
 import { describeClientFilters } from '@/features/feed/describe-filters'
 import {
   AllFailedState,
   EmptyState,
   FeedSkeleton,
   NoSourcesState,
+  PersonaliseState,
   SourceFailureNotice,
 } from '@/features/feed/FeedStates'
 import { PreferencesDialog } from '@/features/preferences/PreferencesDialog'
+import { ActiveFilters } from '@/features/search/ActiveFilters'
 import { CategoryRail } from '@/features/search/CategoryRail'
 import { FilterPanel } from '@/features/search/FilterPanel'
 import { SearchBar } from '@/features/search/SearchBar'
+import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { MAX_PAGES, useArticles } from '@/hooks/useArticles'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { useSourceAvailability } from '@/hooks/useSourceAvailability'
@@ -23,11 +26,14 @@ import { pluralize } from '@/lib/text'
 import { useDataMode } from '@/store/data-mode'
 import type { BrowseMode, FeedMode } from '@/store/preferences'
 import { usePreferences } from '@/store/preferences'
-import { useTheme } from '@/store/theme'
+import type { ThemeChoice } from '@/store/theme'
+import { THEME_LABELS, nextChoice, useTheme } from '@/store/theme'
 import {
   IconAdjustmentsHorizontal,
+  IconDeviceDesktop,
   IconFilter,
   IconMoon,
+  IconSettings,
   IconStar,
   IconSun,
 } from '@tabler/icons-react'
@@ -38,13 +44,21 @@ const FEED_MODES = [
   { value: 'my-feed', label: 'My Feed' },
 ] as const satisfies readonly { value: FeedMode; label: string }[]
 
+const THEME_ICONS: Record<ThemeChoice, typeof IconSun> = {
+  light: IconSun,
+  dark: IconMoon,
+  system: IconDeviceDesktop,
+}
+
 export function App() {
   const feed = useFeedQuery()
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [preferencesOpen, setPreferencesOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const theme = useTheme((state) => state.theme)
-  const toggleTheme = useTheme((state) => state.toggleTheme)
+  const themeChoice = useTheme((state) => state.choice)
+  const cycleTheme = useTheme((state) => state.cycleChoice)
+  const ThemeIcon = THEME_ICONS[themeChoice]
 
   const feedMode = usePreferences((state) => state.mode)
   const setFeedMode = usePreferences((state) => state.setMode)
@@ -52,11 +66,17 @@ export function App() {
   const setBrowseMode = usePreferences((state) => state.setBrowseMode)
   const savedCategories = usePreferences((state) => state.categories)
   const savedAuthors = usePreferences((state) => state.authors)
+  const hasPreferences = usePreferences((state) => state.hasPreferences())
 
+  const dataPreference = useDataMode((state) => state.preference)
   const setDataPreference = useDataMode((state) => state.setPreference)
   useSourceAvailability()
 
   const hasSources = feed.sources.length > 0
+  // Nothing saved means nothing to personalise with, so My Feed asks for
+  // choices rather than spending a request on an unfiltered feed.
+  const needsPersonalising = feed.isMyFeed && !hasPreferences
+
   const {
     articles,
     isLoading,
@@ -70,16 +90,18 @@ export function App() {
     isResolvingMode,
     atPageCap,
   } = useArticles(feed.query, feed.sources, {
-    enabled: hasSources,
+    enabled: hasSources && !needsPersonalising,
     accumulate: browseMode === 'infinite',
   })
 
   const clientFilterNotice = describeClientFilters(clientFilters)
+  const usingSample =
+    dataPreference === 'demo' || deliveries.some((delivery) => delivery.origin === 'demo')
   const waitingForFirstPage = articles.length === 0 && isLoading
   const canLoadMore = hasMore && !atPageCap
 
-  // The sentinel only ever asks for one more page; the hook decides whether that
-  // costs a request or comes back from cache.
+  // The sentinel asks for one more page; the hook decides whether that costs a
+  // request or comes back from cache.
   const sentinelRef = useRef<HTMLDivElement>(null)
   const { nextPage } = feed
 
@@ -118,7 +140,7 @@ export function App() {
         onToggleCategory={feed.toggleCategory}
         onDateFromChange={feed.setDateFrom}
         onDateToChange={feed.setDateTo}
-        onReset={feed.resetFilters}
+        onReset={feed.clearFilters}
       />
     )
   }
@@ -139,7 +161,10 @@ export function App() {
         Skip to articles
       </a>
 
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-canvas/80 backdrop-blur-xl">
+      <header
+        data-sticky-header
+        className="sticky top-0 z-30 border-b border-border/70 bg-canvas/80 backdrop-blur-xl"
+      >
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 sm:px-6 lg:h-20 lg:flex-nowrap lg:gap-x-6 lg:py-0">
           <h1 className="order-1 mr-auto min-w-0 lg:mr-0">
             <a
@@ -166,28 +191,31 @@ export function App() {
                 isSearching={isFetching && !isLoading}
               />
             </div>
-
-            <DataModeBar
-              deliveries={deliveries}
-              pending={isResolvingMode}
-              onChange={(preference) => {
-                setDataPreference(preference)
-                feed.setPage(1)
-              }}
-              className="lg:order-3"
-            />
           </div>
 
           <Button
             size="icon"
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            onClick={toggleTheme}
+            aria-label={`Theme: ${THEME_LABELS[themeChoice]}. Switch to ${THEME_LABELS[
+              nextChoice(themeChoice)
+            ].toLowerCase()}.`}
+            onClick={cycleTheme}
             className="order-1 shrink-0"
           >
-            {theme === 'dark' ? (
-              <IconSun size={18} stroke={1.75} aria-hidden />
-            ) : (
-              <IconMoon size={18} stroke={1.75} aria-hidden />
+            <ThemeIcon size={18} stroke={1.75} aria-hidden />
+          </Button>
+
+          <Button
+            size="icon"
+            aria-label={usingSample ? 'Settings — showing sample articles' : 'Settings'}
+            onClick={() => setSettingsOpen(true)}
+            className="relative order-1 shrink-0 lg:order-3"
+          >
+            <IconSettings size={18} stroke={1.75} aria-hidden />
+            {usingSample && (
+              <span
+                aria-hidden
+                className="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning-ink ring-2 ring-canvas"
+              />
             )}
           </Button>
 
@@ -231,6 +259,17 @@ export function App() {
                     ? `Saved choices: ${personalisationSummary}.`
                     : 'Saved sources, categories, and authors shape this feed.'}
                 </p>
+                {needsPersonalising && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setPreferencesOpen(true)}
+                    className="mt-4"
+                  >
+                    <IconAdjustmentsHorizontal size={16} stroke={1.75} aria-hidden />
+                    Personalise
+                  </Button>
+                )}
               </div>
             ) : (
               renderFilterPanel('sidebar')
@@ -260,7 +299,7 @@ export function App() {
             </nav>
 
             {hasSources && articles.length > 0 && (
-              <p className="mr-auto text-[13px] text-muted lg:mr-0" role="status">
+              <p className="mr-auto text-[13px] text-muted" role="status">
                 {pluralize(articles.length, 'article')}
                 {feed.query.keyword && (
                   <>
@@ -270,24 +309,28 @@ export function App() {
                 )}
               </p>
             )}
-
-            <BrowseModeSwitch
-              value={browseMode}
-              onChange={changeBrowseMode}
-              className={hasSources && articles.length > 0 ? undefined : 'ml-auto'}
-            />
           </div>
 
           {!feed.isMyFeed && (
-            <CategoryRail
-              className="mb-4 lg:hidden"
-              selected={feed.explore.categories}
-              onToggle={feed.toggleCategory}
-              onClear={feed.clearCategories}
-            />
+            <>
+              <CategoryRail
+                className="mb-4 lg:hidden"
+                selected={feed.explore.categories}
+                onToggle={feed.toggleCategory}
+                onClear={feed.clearCategories}
+              />
+              <ActiveFilters
+                className="mb-4"
+                values={feed.explore}
+                onRemoveSource={feed.toggleSource}
+                onRemoveCategory={feed.toggleCategory}
+                onClearDates={feed.clearDates}
+                onClearAll={feed.clearFilters}
+              />
+            </>
           )}
 
-          {feed.isMyFeed && (
+          {feed.isMyFeed && !needsPersonalising && (
             <div className="mb-5 flex items-start gap-3 rounded-card bg-accent-soft px-4 py-3.5 ring-1 ring-accent/15 ring-inset lg:hidden">
               <IconStar
                 size={18}
@@ -304,6 +347,8 @@ export function App() {
             </div>
           )}
 
+          <DataModeNotice deliveries={deliveries} pending={isResolvingMode} />
+
           {(clientFilterNotice || caveats.length > 0) && (
             <div className="mb-4 space-y-1 text-xs leading-relaxed text-subtle">
               {clientFilterNotice && <p>{clientFilterNotice}</p>}
@@ -315,7 +360,9 @@ export function App() {
 
           <SourceFailureNotice failures={failures} />
 
-          {!hasSources ? (
+          {needsPersonalising ? (
+            <PersonaliseState onPersonalise={() => setPreferencesOpen(true)} />
+          ) : !hasSources ? (
             <NoSourcesState />
           ) : waitingForFirstPage ? (
             <FeedSkeleton />
@@ -325,7 +372,12 @@ export function App() {
             <EmptyState onReset={feed.resetFilters} />
           ) : (
             <>
-              <ArticleGrid articles={articles} />
+              <ReadingAnchor
+                items={articles}
+                armed={browseMode === 'infinite' && isFetching && feed.page > 1}
+              >
+                <ArticleGrid articles={articles} />
+              </ReadingAnchor>
 
               {browseMode === 'pages' ? (
                 <nav
@@ -384,6 +436,18 @@ export function App() {
       )}
 
       <PreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        deliveries={deliveries}
+        pending={isResolvingMode}
+        onBrowseModeChange={changeBrowseMode}
+        onDataPreferenceChange={(preference) => {
+          setDataPreference(preference)
+          feed.setPage(1)
+        }}
+      />
     </div>
   )
 }

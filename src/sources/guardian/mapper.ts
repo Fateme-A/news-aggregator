@@ -3,12 +3,8 @@ import { stripHtml } from '@/lib/text'
 import type { GuardianResult } from './types'
 
 /**
- * Canonical category → Guardian sections.
- *
- * This is the single source of truth for the Guardian taxonomy. The reverse
- * lookup used when mapping a response back to a canonical category is *derived*
- * from this table rather than written out a second time, so the two directions
- * cannot drift apart.
+ * Canonical category → Guardian sections. The reverse lookup is derived from
+ * this table rather than written out again, so the two cannot drift apart.
  */
 export const CATEGORY_TO_SECTIONS: Record<Category, string[]> = {
   business: ['business', 'money'],
@@ -59,9 +55,8 @@ export function sectionsParam(categories: Category[]): string | undefined {
 }
 
 /**
- * Prefer the contributor tags over `fields.byline`: tags are already split per
- * person and omit the editorial noise that sometimes appears in the byline
- * string. Fall back to the byline when no contributor tags are present.
+ * Contributor tags are already split per person and omit the editorial noise
+ * in `fields.byline`, which is the fallback when there are none.
  */
 function extractAuthor(result: GuardianResult): string | undefined {
   const contributors = (result.tags ?? [])

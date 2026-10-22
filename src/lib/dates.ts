@@ -28,3 +28,10 @@ export function formatRelativeDate(iso: string): string {
 
   return `${formatDistanceToNowStrict(date)} ago`
 }
+
+/** "4 Oct 2026" — for naming a chosen date back to the reader. */
+export function formatDay(iso: string): string {
+  const date = parseISO(iso)
+  if (!isValid(date)) return iso
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
