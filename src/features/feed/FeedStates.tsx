@@ -10,31 +10,20 @@ export function FeedSkeleton({ count = 7 }: { count?: number }) {
       aria-busy="true"
       aria-label="Loading articles"
     >
-      {Array.from({ length: count }, (_, index) => {
-        const lead = index === 0
-        return (
-          <div
-            key={index}
-            className={cn(
-              'overflow-hidden rounded-card bg-surface ring-1 ring-border ring-inset',
-              lead && 'sm:col-span-2 sm:flex xl:col-span-3',
-            )}
-          >
-            <div
-              className={cn(
-                'animate-pulse bg-surface-muted',
-                lead ? 'aspect-[16/10] sm:aspect-auto sm:w-[44%]' : 'aspect-[16/9]',
-              )}
-            />
-            <div className={cn('flex-1 space-y-3', lead ? 'p-5 sm:p-7' : 'p-5')}>
-              <div className="h-5 w-28 animate-pulse rounded-full bg-surface-muted" />
-              <div className="h-4 w-full animate-pulse rounded-full bg-surface-muted" />
-              <div className="h-4 w-4/5 animate-pulse rounded-full bg-surface-muted" />
-              <div className="h-3 w-2/3 animate-pulse rounded-full bg-surface-muted" />
-            </div>
+      {Array.from({ length: count }, (_, index) => (
+        <div
+          key={index}
+          className="overflow-hidden rounded-card bg-surface ring-1 ring-border ring-inset"
+        >
+          <div className="aspect-[16/9] animate-pulse bg-surface-muted" />
+          <div className="flex-1 space-y-3 p-5">
+            <div className="h-5 w-28 animate-pulse rounded-full bg-surface-muted" />
+            <div className="h-4 w-full animate-pulse rounded-full bg-surface-muted" />
+            <div className="h-4 w-4/5 animate-pulse rounded-full bg-surface-muted" />
+            <div className="h-3 w-2/3 animate-pulse rounded-full bg-surface-muted" />
           </div>
-        )
-      })}
+        </div>
+      ))}
     </div>
   )
 }
