@@ -375,6 +375,27 @@ describe('App', () => {
       })
     })
 
+    it('keeps Filter on Explore and Personalise on My Feed in the narrow layout', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+
+      // Below the sidebar breakpoint the header carries one of these, not both.
+      expect(screen.getByRole('button', { name: 'Filter' }).className).toContain('lg:hidden')
+      expect(screen.getByRole('button', { name: 'Personalise' }).className).toContain(
+        'max-lg:hidden',
+      )
+
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+
+      expect(screen.queryByRole('button', { name: 'Filter' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Personalise' }).className).not.toContain(
+        'max-lg:hidden',
+      )
+    })
+
     it('switches to the personalised feed on demand', async () => {
       const user = userEvent.setup()
       usePreferences.getState().toggleCategory('science')

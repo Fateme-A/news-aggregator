@@ -1,12 +1,13 @@
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/Button'
 import { SearchBar } from '@/features/search/components/SearchBar'
+import { cn } from '@/lib/cn'
 import { IconAdjustmentsHorizontal, IconFilter, IconSettings } from '@tabler/icons-react'
 
 interface AppHeaderProps {
   keyword: string
   onKeywordChange: (value: string) => void
-  showFilterButton: boolean
+  isMyFeed: boolean
   activeFilterCount: number
   usingSample: boolean
   onOpenFilters: () => void
@@ -17,7 +18,7 @@ interface AppHeaderProps {
 export function AppHeader({
   keyword,
   onKeywordChange,
-  showFilterButton,
+  isMyFeed,
   activeFilterCount,
   usingSample,
   onOpenFilters,
@@ -70,7 +71,7 @@ export function AppHeader({
           )}
         </Button>
 
-        {showFilterButton && (
+        {!isMyFeed && (
           <Button
             aria-label={activeFilterCount > 0 ? `Filter, ${activeFilterCount} active` : 'Filter'}
             onClick={onOpenFilters}
@@ -88,7 +89,10 @@ export function AppHeader({
         <Button
           aria-label="Personalise"
           onClick={onOpenPreferences}
-          className="order-1 h-11 shrink-0 px-3.5 sm:px-5 lg:order-3"
+          className={cn(
+            'order-1 h-11 shrink-0 px-3.5 sm:px-5 lg:order-3',
+            !isMyFeed && 'max-lg:hidden',
+          )}
         >
           <IconAdjustmentsHorizontal size={18} stroke={1.75} aria-hidden />
           <span className="hidden sm:inline">Personalise</span>

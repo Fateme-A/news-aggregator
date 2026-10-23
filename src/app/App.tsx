@@ -53,7 +53,7 @@ export function App() {
       <AppHeader
         keyword={feed.keyword}
         onKeywordChange={feed.setKeyword}
-        showFilterButton={!feed.isMyFeed}
+        isMyFeed={feed.isMyFeed}
         activeFilterCount={feed.activeFilterCount}
         usingSample={view.usingSample}
         onOpenFilters={() => view.open('filters')}
