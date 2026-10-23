@@ -5,14 +5,10 @@ services:
     # Override the host side when 8080 is taken: `HOST_PORT=8090 docker compose up`.
     ports:
       - '${HOST_PORT:-8080}:8080'
-    # Keys are read when the container starts and are never baked into the
-    # image. `.env.example` is in the repo: the Guardian line is the one to
-    # fill. `.env.local` overrides it and is gitignored. Both are optional, so
-    # a first `docker compose up --build` still starts on the recorded samples.
-    # The `required` field needs Compose v2.24+.
+    # Keys are supplied at run time and never baked into the image. The file is
+    # optional so a first `docker compose up --build` works before it exists:
+    # every provider then serves its recorded sample. Needs Compose v2.24+.
     env_file:
-      - path: .env.example
-        required: false
       - path: .env.local
         required: false
     restart: unless-stopped
