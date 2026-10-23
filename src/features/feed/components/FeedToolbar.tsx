@@ -32,7 +32,7 @@ export function FeedToolbar({ mode, onModeChange, articleCount, keyword }: FeedT
       </nav>
 
       {articleCount > 0 && (
-        <p className="mr-auto text-[13px] text-muted" role="status">
+        <p className="ml-auto text-[13px] text-muted" role="status">
           {pluralize(articleCount, 'article')}
           {keyword && (
             <>
