@@ -53,7 +53,7 @@ export const nytimesSource: NewsSource = {
       sort: query.keyword.trim() ? 'relevance' : 'newest',
     })
 
-    const data = await fetchJson<NytSearchResponse>(
+    const { data, delivery } = await fetchJson<NytSearchResponse>(
       'nytimes',
       `${apiBase('nytimes')}/articlesearch.json${search}`,
       context,
@@ -67,6 +67,7 @@ export const nytimesSource: NewsSource = {
       articles: docs.map(toArticle),
       ...(hits === undefined ? {} : { totalResults: hits }),
       hasMore: docs.length === NYT_PAGE_SIZE && query.page < NYT_MAX_PAGES,
+      delivery,
     }
   },
 }

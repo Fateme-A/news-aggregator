@@ -10,11 +10,11 @@ import { FeedSidebar } from '@/features/feed/components/FeedSidebar'
 import {
   AllFailedState,
   EmptyState,
-  FeedSkeleton,
   NoSourcesState,
   PersonaliseState,
-  SourceFailureNotice,
-} from '@/features/feed/components/FeedStates'
+} from '@/features/feed/components/FeedPlaceholders'
+import { FeedSkeleton } from '@/features/feed/components/FeedSkeleton'
+import { SourceFailureNotice } from '@/features/feed/components/SourceFailureNotice'
 import { FeedToolbar } from '@/features/feed/components/FeedToolbar'
 import { PersonalisedBanner } from '@/features/feed/components/PersonalisedBanner'
 import { ReadingAnchor } from '@/features/feed/components/ReadingAnchor'
@@ -67,7 +67,7 @@ export function App() {
           personalisationSummary={view.personalisationSummary}
           needsPersonalising={view.needsPersonalising}
           onPersonalise={() => view.open('preferences')}
-          filters={filterPanel('sidebar')}
+          renderFilters={() => filterPanel('sidebar')}
         />
 
         <main id="feed" className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
-import type { DataPreference, DemoReason, SourceDelivery } from '@/store/data-mode'
+import type { DemoReason } from '@/domain/delivery'
+import type { DataPreference, SourceDelivery } from '@/store/data-mode'
 
 const REASON: Record<DemoReason, string> = {
   chosen: 'demo mode is on',

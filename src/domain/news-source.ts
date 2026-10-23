@@ -1,4 +1,5 @@
 import type { Category, SourceId } from './article'
+import type { DataMode, DemoReason } from './delivery'
 import type { ArticlePage, ArticleQuery } from './query'
 
 /**
@@ -20,18 +21,6 @@ export interface SourceCapabilities {
   caveats?: string[]
 }
 
-/** How a request should be served. Decided by the caller, never by the transport. */
-export type DataMode = 'auto' | 'live' | 'demo'
-
-/** Normalised reason the recorded sample was served instead of a live response. */
-export type DemoReason = 'chosen' | 'missing-key' | 'rate-limited' | 'auth'
-
-/** What a given source actually returned, so the UI can say so. */
-export interface Delivery {
-  origin: 'live' | 'demo'
-  reason?: DemoReason
-}
-
 /**
  * Resolved by the caller and passed down, so `sources/` reads no application
  * state and can be tested by passing a value.
@@ -41,6 +30,14 @@ export interface FetchContext {
   mode: DataMode
   /** Which providers have a key configured. Omitted means "assume they all do". */
   configured?: Partial<Record<SourceId, boolean>>
+  /**
+   * Providers already known to be refusing, so Auto stops spending quota on
+   * them. Supplied by the caller rather than read from a store, which is what
+   * keeps `sources/` free of application state.
+   */
+  suppressed?: Partial<Record<SourceId, DemoReason>>
+  /** Reports a provider that has just started refusing. */
+  onSuppress?: (sourceId: SourceId, reason: DemoReason) => void
 }
 
 /**

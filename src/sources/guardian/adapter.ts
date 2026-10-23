@@ -43,7 +43,7 @@ export const guardianSource: NewsSource = {
       'show-tags': 'contributor',
     })
 
-    const data = await fetchJson<GuardianSearchResponse>(
+    const { data, delivery } = await fetchJson<GuardianSearchResponse>(
       'guardian',
       `${apiBase('guardian')}/search${search}`,
       context,
@@ -55,6 +55,7 @@ export const guardianSource: NewsSource = {
       articles: results.map(toArticle),
       totalResults: total,
       hasMore: currentPage < pages,
+      delivery,
     }
   },
 }

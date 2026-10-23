@@ -7,8 +7,8 @@ interface FeedSidebarProps {
   personalisationSummary: string
   needsPersonalising: boolean
   onPersonalise: () => void
-  /** The Explore filter panel; unused in My Feed. */
-  filters: ReactNode
+  /** Renders the Explore filter panel. Not called in My Feed. */
+  renderFilters: () => ReactNode
 }
 
 export function FeedSidebar({
@@ -16,7 +16,7 @@ export function FeedSidebar({
   personalisationSummary,
   needsPersonalising,
   onPersonalise,
-  filters,
+  renderFilters,
 }: FeedSidebarProps) {
   return (
     <aside className="hidden w-[17rem] shrink-0 lg:block">
@@ -37,7 +37,7 @@ export function FeedSidebar({
             )}
           </div>
         ) : (
-          filters
+          renderFilters()
         )}
       </div>
     </aside>

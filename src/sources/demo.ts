@@ -1,13 +1,8 @@
 import type { Article, SourceId } from '@/domain/article'
-import type {
-  DataMode,
-  Delivery,
-  DemoReason,
-  FetchContext,
-  NewsSourceError,
-} from '@/domain/news-source'
+import type { Delivery, DemoReason } from '@/domain/delivery'
+import type { FetchContext, NewsSourceError } from '@/domain/news-source'
 import type { ArticleQuery } from '@/domain/query'
-import { normaliseAuthor } from '@/lib/text'
+import { matchesAuthors, matchesCategories, matchesDateRange, matchesKeyword } from '@/lib/matching'
 import guardianSample from '@/samples/guardian-search.json'
 import newsapiEverythingSample from '@/samples/newsapi-everything.json'
 import newsapiHeadlinesSample from '@/samples/newsapi-topheadlines.json'
@@ -16,39 +11,11 @@ import nytSample from '@/samples/nyt-search.json'
 /**
  * Serves recorded samples when a provider cannot be called.
  *
- * `deliveries` records what each source last returned, so the UI can name the
- * reason. `suppressed` is a circuit breaker: once a provider answers 429 or
- * 401 in Auto mode, further calls go straight to the sample rather than spend
- * more of a 100-request daily budget.
- *
- * Neither reads a store — the mode arrives in `FetchContext`.
+ * Everything this needs arrives in `FetchContext` and everything it produces is
+ * returned, so the module holds no state: which providers are refusing is the
+ * caller's to remember, and the delivery travels back with the page rather than
+ * being stashed somewhere for the caller to look up afterwards.
  */
-
-const deliveries = new Map<SourceId, Delivery>()
-const suppressed = new Map<SourceId, DemoReason>()
-let lastMode: DataMode | undefined
-
-/** Changing mode resets the breakers. */
-function syncMode(mode: DataMode): void {
-  if (mode === lastMode) return
-  lastMode = mode
-  suppressed.clear()
-}
-
-export function noteDelivery(sourceId: SourceId, delivery: Delivery): void {
-  deliveries.set(sourceId, delivery)
-}
-
-export function readDelivery(sourceId: SourceId): Delivery {
-  return deliveries.get(sourceId) ?? { origin: 'live' }
-}
-
-/** The maps outlive a render by design, so tests must reset them. */
-export function resetDeliveryState(): void {
-  deliveries.clear()
-  suppressed.clear()
-  lastMode = undefined
-}
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return
@@ -66,14 +33,12 @@ function sampleFor(sourceId: SourceId, url: string): unknown {
 
 /** Returns `'live'` to go to the network, or the reason to serve the sample. */
 export function planDelivery(sourceId: SourceId, context: FetchContext): 'live' | DemoReason {
-  syncMode(context.mode)
-
   if (context.mode === 'demo') return 'chosen'
   if (context.mode === 'live') return 'live'
 
   // Auto: skip providers with no key, and providers already known to be refusing.
   if (context.configured?.[sourceId] === false) return 'missing-key'
-  return suppressed.get(sourceId) ?? 'live'
+  return context.suppressed?.[sourceId] ?? 'live'
 }
 
 /** Whether a live failure may fall back to the sample, and why. */
@@ -83,16 +48,21 @@ export function planRecovery(context: FetchContext, error: NewsSourceError): Dem
   return error.kind
 }
 
+export interface Delivered<T> {
+  data: T
+  delivery: Delivery
+}
+
 export function demoPayload<T>(
   sourceId: SourceId,
   url: string,
   reason: DemoReason,
-  signal?: AbortSignal,
-): T {
-  throwIfAborted(signal)
-  if (reason === 'rate-limited' || reason === 'auth') suppressed.set(sourceId, reason)
-  noteDelivery(sourceId, { origin: 'demo', reason })
-  return sampleFor(sourceId, url) as T
+  context: FetchContext,
+): Delivered<T> {
+  throwIfAborted(context.signal)
+  // A refusal is worth remembering: Auto should not spend more quota on it.
+  if (reason === 'rate-limited' || reason === 'auth') context.onSuppress?.(sourceId, reason)
+  return { data: sampleFor(sourceId, url) as T, delivery: { origin: 'demo', reason } }
 }
 
 /**
@@ -101,33 +71,11 @@ export function demoPayload<T>(
  * Demo mode looks like the filters are broken.
  */
 export function narrowSample(articles: readonly Article[], query: ArticleQuery): Article[] {
-  const keyword = query.keyword.trim().toLowerCase()
-  const wantedAuthors = query.authors.map(normaliseAuthor)
-
-  return articles.filter((article) => {
-    if (keyword) {
-      const haystack =
-        `${article.title} ${article.description} ${article.author ?? ''}`.toLowerCase()
-      if (!haystack.includes(keyword)) return false
-    }
-
-    if (
-      query.categories.length > 0 &&
-      article.category &&
-      !query.categories.includes(article.category)
-    ) {
-      return false
-    }
-
-    const day = article.publishedAt.slice(0, 10)
-    if (query.dateFrom && day < query.dateFrom) return false
-    if (query.dateTo && day > query.dateTo) return false
-
-    if (wantedAuthors.length > 0) {
-      const actual = article.author ? normaliseAuthor(article.author) : ''
-      if (!wantedAuthors.some((name) => actual.includes(name))) return false
-    }
-
-    return true
-  })
+  return articles.filter(
+    (article) =>
+      matchesKeyword(article, query.keyword) &&
+      matchesCategories(article, query.categories, 'keep') &&
+      matchesDateRange(article, query.dateFrom, query.dateTo) &&
+      matchesAuthors(article, query.authors),
+  )
 }

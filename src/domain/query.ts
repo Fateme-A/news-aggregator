@@ -1,4 +1,5 @@
 import type { Article, Category, SourceId } from './article'
+import type { Delivery } from './delivery'
 
 /**
  * A provider-agnostic description of what the user is asking for. Adapters
@@ -24,6 +25,8 @@ export interface ArticleQuery {
 
 export interface ArticlePage {
   articles: Article[]
+  /** Live, or the recorded sample and why — returned, not looked up afterwards. */
+  delivery: Delivery
   /** Total matches reported by the provider, when it reports one. */
   totalResults?: number
   /** Whether another page is available. */

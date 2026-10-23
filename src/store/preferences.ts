@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CATEGORIES, type Category, type SourceId } from '@/domain/article'
 import { ALL_SOURCE_IDS } from '@/sources/registry'
+import { toggle } from '@/lib/toggle'
 
 /**
  * Durable choices only. Transient search state — keyword, date range, page —
@@ -43,10 +44,6 @@ const INITIAL: StoredPreferences = {
   authors: [],
   mode: 'explore',
   browseMode: 'pages',
-}
-
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
 }
 
 function isOneOf<T extends string>(allowed: readonly T[], value: unknown): value is T {

@@ -86,7 +86,7 @@ export const newsapiSource: NewsSource = {
 
     const endpoint = topHeadlines ? 'top-headlines' : 'everything'
     const url = `${apiBase('newsapi')}/${endpoint}${search}`
-    let data = await fetchJson<NewsApiResponse>('newsapi', url, context)
+    let { data, delivery } = await fetchJson<NewsApiResponse>('newsapi', url, context)
 
     // NewsAPI reports rate limits and bad keys as HTTP 200 with status:"error",
     // which the shared transport cannot classify.
@@ -104,7 +104,7 @@ export const newsapiSource: NewsSource = {
       )
       const recovery = planRecovery(context, error)
       if (!recovery) throw error
-      data = demoPayload<NewsApiResponse>('newsapi', url, recovery)
+      ;({ data, delivery } = demoPayload<NewsApiResponse>('newsapi', url, recovery, context))
     }
 
     const raw = (data.articles ?? []).filter(isUsable)
@@ -116,6 +116,7 @@ export const newsapiSource: NewsSource = {
       articles: raw.map((item) => toArticle(item, topHeadlines ? category : undefined)),
       totalResults: total,
       hasMore: query.page * query.pageSize < total,
+      delivery,
     }
   },
 }

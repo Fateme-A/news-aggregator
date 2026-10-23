@@ -9,6 +9,16 @@ import { createEmptyQuery } from '@/domain/query'
 import { todayIso } from '@/lib/dates'
 import { SOURCES } from '@/sources/registry'
 
+/**
+ * Author support never varies by query, so this is fixed at module load rather
+ * than recomputed on every render.
+ */
+const AUTHOR_HINTS: Partial<Record<SourceId, string>> = Object.fromEntries(
+  SOURCES.filter((source) => !source.capabilities(createEmptyQuery()).authorFilter).map(
+    (source) => [source.id, 'Author filtering applied in-browser'],
+  ),
+)
+
 interface FilterPanelProps {
   idPrefix?: string
   values: ExploreFilters
@@ -29,14 +39,6 @@ export function FilterPanel({
   onReset,
 }: FilterPanelProps) {
   const today = todayIso()
-  // Author support never varies by query, so an empty one is a fair probe.
-  const probe = createEmptyQuery()
-  const authorHints: Partial<Record<SourceId, string>> = Object.fromEntries(
-    SOURCES.filter((source) => !source.capabilities(probe).authorFilter).map((source) => [
-      source.id,
-      'Author filtering applied in-browser',
-    ]),
-  )
   const hasFilters =
     values.categories.length > 0 ||
     Boolean(values.dateFrom) ||
@@ -64,7 +66,7 @@ export function FilterPanel({
               label={source.label}
               checked={values.sources.includes(source.id)}
               onChange={() => onToggleSource(source.id)}
-              {...(authorHints[source.id] ? { hint: authorHints[source.id] } : {})}
+              {...(AUTHOR_HINTS[source.id] ? { hint: AUTHOR_HINTS[source.id] } : {})}
             />
           ))}
         </div>

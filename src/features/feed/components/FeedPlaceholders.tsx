@@ -1,40 +1,10 @@
 import { Button } from '@/components/ui/Button'
 import type { SourceFailure } from '@/features/feed/hooks/useArticles'
 import { cn } from '@/lib/cn'
-import {
-  IconAlertCircle,
-  IconAlertTriangle,
-  IconList,
-  IconSearch,
-  IconStar,
-} from '@tabler/icons-react'
+import { IconAlertCircle, IconList, IconSearch, IconStar } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 
-export function FeedSkeleton({ count = 7 }: { count?: number }) {
-  return (
-    <div
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3"
-      aria-busy="true"
-      aria-label="Loading articles"
-    >
-      {Array.from({ length: count }, (_, index) => (
-        <div
-          key={index}
-          className="overflow-hidden rounded-card bg-surface ring-1 ring-border ring-inset"
-        >
-          <div className="aspect-[16/9] animate-pulse bg-surface-muted" />
-          <div className="flex-1 space-y-3 p-5">
-            <div className="h-5 w-28 animate-pulse rounded-full bg-surface-muted" />
-            <div className="h-4 w-full animate-pulse rounded-full bg-surface-muted" />
-            <div className="h-4 w-4/5 animate-pulse rounded-full bg-surface-muted" />
-            <div className="h-3 w-2/3 animate-pulse rounded-full bg-surface-muted" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
+/** The shared frame for every "nothing to show here" screen. */
 function Placeholder({
   icon,
   title,
@@ -127,33 +97,6 @@ export function NoSourcesState() {
     <Placeholder icon={<IconList size={22} stroke={1.75} />} title="No sources selected">
       Choose at least one source to start building your feed.
     </Placeholder>
-  )
-}
-
-export function SourceFailureNotice({ failures }: { failures: SourceFailure[] }) {
-  if (failures.length === 0) return null
-
-  return (
-    <div
-      role="status"
-      className="mb-5 flex gap-3 rounded-card bg-warning-soft px-4 py-3.5 ring-1 ring-warning-ink/15 ring-inset"
-    >
-      <IconAlertTriangle size={18} stroke={1.75} className="mt-0.5 shrink-0" aria-hidden />
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-warning-ink">
-          {failures.length === 1
-            ? 'One source is unavailable'
-            : `${failures.length} sources are unavailable`}
-        </p>
-        <ul className="mt-1 space-y-0.5">
-          {failures.map((failure) => (
-            <li key={failure.sourceId} className="text-[13px] leading-relaxed text-warning-ink/80">
-              {failure.message}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   )
 }
 

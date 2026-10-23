@@ -1,18 +1,12 @@
 import { createEmptyQuery } from '@/domain/query'
-import { narrowSample, readDelivery, resetDeliveryState } from '@/sources/demo'
+import { narrowSample } from '@/sources/demo'
 import { guardianSource } from '@/sources/guardian/adapter'
 import { newsapiSource } from '@/sources/newsapi/adapter'
 import { context } from '@/test/context'
 import { stubFetch } from '@/test/fetch-spy'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const ALL_KEYS = { guardian: true, nytimes: true, newsapi: true } as const
-
-beforeEach(() => {
-  // The circuit breaker and the delivery log outlive a single request by
-  // design, so each test starts from a clean one.
-  resetDeliveryState()
-})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -27,7 +21,7 @@ describe('demo and auto data', () => {
 
     expect(spy).not.toHaveBeenCalled()
     expect(page.articles.length).toBeGreaterThan(0)
-    expect(readDelivery('guardian')).toEqual({ origin: 'demo', reason: 'chosen' })
+    expect(page.delivery).toEqual({ origin: 'demo', reason: 'chosen' })
   })
 
   it('narrows the sample to articles that match the keyword', async () => {
@@ -62,7 +56,7 @@ describe('demo and auto data', () => {
 
     expect(spy).not.toHaveBeenCalled()
     expect(page.articles.length).toBeGreaterThan(0)
-    expect(readDelivery('guardian')).toEqual({ origin: 'demo', reason: 'missing-key' })
+    expect(page.delivery).toEqual({ origin: 'demo', reason: 'missing-key' })
   })
 
   it('falls back to the sample when a live provider is rate-limited', async () => {
@@ -71,34 +65,39 @@ describe('demo and auto data', () => {
     const page = await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS))
 
     expect(page.articles.length).toBeGreaterThan(0)
-    expect(readDelivery('guardian')).toEqual({ origin: 'demo', reason: 'rate-limited' })
+    expect(page.delivery).toEqual({ origin: 'demo', reason: 'rate-limited' })
   })
 
-  it('does not call a rate-limited provider again on the next query', async () => {
-    const spy = stubFetch({}, { ok: false, status: 429 })
+  it('reports a refusing provider so the caller can stop asking', async () => {
+    stubFetch({}, { ok: false, status: 429 })
+    const breaker = {}
 
-    await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS))
+    await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS, breaker))
+
+    expect(breaker).toEqual({ guardian: 'rate-limited' })
+  })
+
+  it('does not call a provider the caller has marked as refusing', async () => {
+    const spy = stubFetch({}, { ok: false, status: 429 })
+    const breaker = {}
+
+    await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS, breaker))
     const page = await guardianSource.fetchArticles(
       { ...createEmptyQuery(), keyword: 'climate' },
-      context('auto', ALL_KEYS),
+      context('auto', ALL_KEYS, breaker),
     )
 
     expect(spy).toHaveBeenCalledTimes(1)
     expect(page.articles.length).toBeGreaterThan(0)
-    expect(readDelivery('guardian').reason).toBe('rate-limited')
+    expect(page.delivery.reason).toBe('rate-limited')
   })
 
-  it('retries a rate-limited provider once the reader changes mode', async () => {
+  it('calls again once the caller clears the breaker', async () => {
     const spy = stubFetch({}, { ok: false, status: 429 })
-    await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS))
-    expect(spy).toHaveBeenCalledTimes(1)
 
-    // Switching mode is the reader asking for a fresh attempt; without this the
-    // breaker would pin the provider to samples for the rest of the session.
-    await guardianSource.fetchArticles(createEmptyQuery(), context('demo')).catch(() => undefined)
-    await guardianSource
-      .fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS))
-      .catch(() => undefined)
+    await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS, {}))
+    // A fresh record is what changing mode produces in the store.
+    await guardianSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS, {}))
 
     expect(spy).toHaveBeenCalledTimes(2)
   })
@@ -109,7 +108,7 @@ describe('demo and auto data', () => {
     const page = await newsapiSource.fetchArticles(createEmptyQuery(), context('auto', ALL_KEYS))
 
     expect(page.articles.length).toBeGreaterThan(0)
-    expect(readDelivery('newsapi')).toEqual({ origin: 'demo', reason: 'rate-limited' })
+    expect(page.delivery).toEqual({ origin: 'demo', reason: 'rate-limited' })
   })
 
   it('keeps a server error visible in auto mode', async () => {
@@ -131,8 +130,8 @@ describe('demo and auto data', () => {
   it('records a successful response as live', async () => {
     stubFetch({ status: 'ok', totalResults: 0, articles: [] })
 
-    await newsapiSource.fetchArticles(createEmptyQuery(), context('live'))
+    const page = await newsapiSource.fetchArticles(createEmptyQuery(), context('live'))
 
-    expect(readDelivery('newsapi')).toEqual({ origin: 'live' })
+    expect(page.delivery).toEqual({ origin: 'live' })
   })
 })

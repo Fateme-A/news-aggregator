@@ -1,6 +1,6 @@
 import type { SourceId } from '@/domain/article'
 import { NewsSourceError, type FetchContext } from '@/domain/news-source'
-import { demoPayload, noteDelivery, planDelivery, planRecovery } from '@/sources/demo'
+import { demoPayload, planDelivery, planRecovery, type Delivered } from '@/sources/demo'
 
 const DEFAULT_TIMEOUT_MS = 10_000
 
@@ -34,9 +34,9 @@ export async function fetchJson<T>(
   sourceId: SourceId,
   url: string,
   context: FetchContext,
-): Promise<T> {
+): Promise<Delivered<T>> {
   const plan = planDelivery(sourceId, context)
-  if (plan !== 'live') return demoPayload<T>(sourceId, url, plan, context.signal)
+  if (plan !== 'live') return demoPayload<T>(sourceId, url, plan, context)
 
   const timeout = AbortSignal.timeout(DEFAULT_TIMEOUT_MS)
   const combined = context.signal ? AbortSignal.any([context.signal, timeout]) : timeout
@@ -59,14 +59,13 @@ export async function fetchJson<T>(
       classify(response.status),
     )
     const recovery = planRecovery(context, error)
-    if (recovery) return demoPayload<T>(sourceId, url, recovery)
+    if (recovery) return demoPayload<T>(sourceId, url, recovery, context)
     throw error
   }
 
   try {
     const data = (await response.json()) as T
-    noteDelivery(sourceId, { origin: 'live' })
-    return data
+    return { data, delivery: { origin: 'live' } }
   } catch (cause) {
     if (cause instanceof NewsSourceError) throw cause
     throw new NewsSourceError(sourceId, `${sourceId} returned malformed JSON`, 'unknown', { cause })

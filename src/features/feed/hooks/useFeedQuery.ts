@@ -1,10 +1,15 @@
 import type { Category, SourceId } from '@/domain/article'
 import { DEFAULT_PAGE_SIZE, type ArticleQuery } from '@/domain/query'
-import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { ALL_SOURCE_IDS } from '@/sources/registry'
+import {
+  countActiveFilters,
+  exploreReducer,
+  INITIAL_EXPLORE,
+  type ExploreState,
+} from '@/features/feed/lib/explore-reducer'
 import type { ExploreFilters } from '@/features/search/lib/filters'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePreferences } from '@/store/preferences'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useReducer } from 'react'
 
 export interface FeedQuery {
   /** Raw keyword, for the controlled input. */
@@ -24,9 +29,7 @@ export interface FeedQuery {
   toggleCategory: (category: Category) => void
   clearCategories: () => void
   clearDates: () => void
-  /** Sources, categories and dates back to their defaults; the keyword stays. */
   clearFilters: () => void
-  /** Everything Explore can ask for, keyword included. */
   resetFilters: () => void
   setPage: (page: number) => void
   nextPage: () => void
@@ -35,22 +38,50 @@ export interface FeedQuery {
 /** Shared empty array, so Explore's query identity does not churn each render. */
 const EMPTY_AUTHORS: string[] = []
 
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
+interface QueryInput {
+  explore: ExploreState
+  keyword: string
+  isMyFeed: boolean
+  savedCategories: Category[]
+  savedAuthors: string[]
 }
 
 /**
- * Decides what to ask for. Explore's inputs live in component state and reset
- * on reload; My Feed's are the saved preferences. Every setter returns to
- * page 1.
+ * One `ArticleQuery` from whichever set of inputs is active.
+ *
+ * My Feed deliberately carries no date range: it is a standing set of
+ * interests, not a point-in-time search, so a stale range would hide new
+ * articles.
+ */
+function toArticleQuery({
+  explore,
+  keyword,
+  isMyFeed,
+  savedCategories,
+  savedAuthors,
+}: QueryInput): ArticleQuery {
+  const base: ArticleQuery = {
+    keyword,
+    categories: isMyFeed ? savedCategories : explore.categories,
+    // Authors are a My Feed concept only; Explore has no author input.
+    authors: isMyFeed ? savedAuthors : EMPTY_AUTHORS,
+    page: explore.page,
+    pageSize: DEFAULT_PAGE_SIZE,
+  }
+  if (isMyFeed) return base
+  return {
+    ...base,
+    ...(explore.dateFrom ? { dateFrom: explore.dateFrom } : {}),
+    ...(explore.dateTo ? { dateTo: explore.dateTo } : {}),
+  }
+}
+
+/**
+ * Decides what to ask for. Explore's inputs live in a reducer and reset on
+ * reload; My Feed's are the saved preferences.
  */
 export function useFeedQuery(): FeedQuery {
-  const [keyword, setKeywordRaw] = useState('')
-  const [exploreSources, setExploreSources] = useState<SourceId[]>(() => [...ALL_SOURCE_IDS])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [dateFrom, setDateFromRaw] = useState('')
-  const [dateTo, setDateToRaw] = useState('')
-  const [page, setPage] = useState(1)
+  const [explore, dispatch] = useReducer(exploreReducer, INITIAL_EXPLORE)
 
   const mode = usePreferences((state) => state.mode)
   const savedSources = usePreferences((state) => state.sources)
@@ -58,85 +89,36 @@ export function useFeedQuery(): FeedQuery {
   const savedAuthors = usePreferences((state) => state.authors)
 
   const isMyFeed = mode === 'my-feed'
-  const debouncedKeyword = useDebouncedValue(keyword, 400)
+  const keyword = useDebouncedValue(explore.keyword, 400)
 
-  /** Any input change restarts paging, or a new search opens on page 7. */
-  const fromFirstPage = useCallback(<T>(setter: (value: T) => void) => {
-    return (value: T) => {
-      setter(value)
-      setPage(1)
-    }
-  }, [])
-
-  const sources = isMyFeed ? savedSources : exploreSources
-
-  const query = useMemo<ArticleQuery>(
-    () => ({
-      keyword: debouncedKeyword,
-      categories: isMyFeed ? savedCategories : categories,
-      // Authors are a My Feed concept only; Explore has no author input.
-      authors: isMyFeed ? savedAuthors : EMPTY_AUTHORS,
-      page,
-      pageSize: DEFAULT_PAGE_SIZE,
-      // My Feed is a standing set of interests, not a point-in-time search:
-      // a stale range carried into it would hide new articles.
-      ...(!isMyFeed && dateFrom ? { dateFrom } : {}),
-      ...(!isMyFeed && dateTo ? { dateTo } : {}),
-    }),
-    [debouncedKeyword, isMyFeed, savedCategories, categories, savedAuthors, page, dateFrom, dateTo],
+  const query = useMemo(
+    () => toArticleQuery({ explore, keyword, isMyFeed, savedCategories, savedAuthors }),
+    [explore, keyword, isMyFeed, savedCategories, savedAuthors],
   )
 
-  /** Leaves the keyword: it has its own control in the search box. */
-  const clearFilters = useCallback(() => {
-    setExploreSources([...ALL_SOURCE_IDS])
-    setCategories([])
-    setDateFromRaw('')
-    setDateToRaw('')
-    setPage(1)
-  }, [])
+  // `dispatch` is stable, so none of these identities churn between renders.
+  return useMemo(
+    () => ({
+      keyword: explore.keyword,
+      query,
+      sources: isMyFeed ? savedSources : explore.sources,
+      explore,
+      page: explore.page,
+      isMyFeed,
+      activeFilterCount: countActiveFilters(explore),
 
-  /** For the empty state, where an unmatched keyword is the usual cause. */
-  const resetFilters = useCallback(() => {
-    setKeywordRaw('')
-    clearFilters()
-  }, [clearFilters])
-
-  const clearDates = useCallback(() => {
-    setDateFromRaw('')
-    setDateToRaw('')
-    setPage(1)
-  }, [])
-
-  return {
-    keyword,
-    query,
-    sources,
-    explore: { sources: exploreSources, categories, dateFrom, dateTo },
-    page,
-    isMyFeed,
-    // A date range counts once, matching the chips shown above the feed.
-    activeFilterCount:
-      categories.length +
-      (dateFrom || dateTo ? 1 : 0) +
-      (exploreSources.length === ALL_SOURCE_IDS.length ? 0 : 1),
-
-    setKeyword: fromFirstPage(setKeywordRaw),
-    setDateFrom: fromFirstPage(setDateFromRaw),
-    setDateTo: fromFirstPage(setDateToRaw),
-    toggleSource: fromFirstPage((id: SourceId) =>
-      setExploreSources((current) => toggle(current, id)),
-    ),
-    toggleCategory: fromFirstPage((category: Category) =>
-      setCategories((current) => toggle(current, category)),
-    ),
-    clearCategories: () => {
-      setCategories([])
-      setPage(1)
-    },
-    clearDates,
-    clearFilters,
-    resetFilters,
-    setPage,
-    nextPage: () => setPage((current) => current + 1),
-  }
+      setKeyword: (value: string) => dispatch({ type: 'keyword', value }),
+      setDateFrom: (value: string) => dispatch({ type: 'dateFrom', value }),
+      setDateTo: (value: string) => dispatch({ type: 'dateTo', value }),
+      toggleSource: (id: SourceId) => dispatch({ type: 'toggleSource', id }),
+      toggleCategory: (category: Category) => dispatch({ type: 'toggleCategory', category }),
+      clearCategories: () => dispatch({ type: 'clearCategories' }),
+      clearDates: () => dispatch({ type: 'clearDates' }),
+      clearFilters: () => dispatch({ type: 'clearFilters' }),
+      resetFilters: () => dispatch({ type: 'reset' }),
+      setPage: (page: number) => dispatch({ type: 'goToPage', page }),
+      nextPage: () => dispatch({ type: 'nextPage' }),
+    }),
+    [explore, query, isMyFeed, savedSources],
+  )
 }
