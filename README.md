@@ -58,22 +58,6 @@ HOST_PORT=8090 docker compose up --build   # when 8080 is taken
 Docker reads those keys from `.env.local` when the container starts. Live articles need them, and
 they are not baked into the image.
 
-### Deploy on Vercel
-
-Deployed at <https://news-aggregator-one-beta.vercel.app/>. A reviewer can use live articles from
-that URL without receiving the keys. Set `GUARDIAN_KEY`, `NYT_KEY`, and `NEWSAPI_KEY` in the Vercel
-project's environment settings (Production), then **redeploy** — Vercel binds environment variables
-at build time, so values added after the last deploy do not reach the running one:
-
-```bash
-npx vercel --prod
-```
-
-`api/index.ts` attaches those values on the server. They are not in the repository and not in the
-JavaScript bundle. Leave a variable empty to keep that provider on its recorded sample.
-
-Docker does not receive these keys from git. Running the container needs `.env.local` filled in.
-
 ### Local development
 
 Requires **Node 22** (what the Dockerfile and CI use).
@@ -164,58 +148,6 @@ Files are named after what they export: `PascalCase.tsx`, `useCamelCase.ts`, `ke
 
 ---
 
-## What I learned about the providers
-
-Only three of the brief's seven sources are usable: NewsAPI is listed twice, OpenNews' API does not
-resolve, NewsCred was absorbed into Optimizely, and BBC News has no public API.
-
-**Two of the three cannot apply the filters their documentation advertises, and both fail
-silently.** This drives the design.
-
-**The NYT `fq` parameter returns nothing.** Measured live with a valid key, same minute, HTTP 200
-throughout:
-
-```
-q=climate                              →  10,000 hits
-q=climate & fq=news_desk:("Climate")   →       0 hits, docs: null
-fq=document_type:("article")           →       0 hits   (trivially true filter)
-fq=glocations:("Iraq")                 →       0 hits   (NYT's own documentation example)
-```
-
-Any `fq` empties the result set, so the adapter does not send it: the NYT declares
-`categoryFilter: false` and `authorFilter: false`, and those are applied in the browser instead.
-
-**NewsAPI splits filters across two incompatible endpoints.** `/everything` has no category
-parameter; `/top-headlines` silently ignores dates. So a keyword cannot decide the endpoint — if a
-category is selected the request goes to `/top-headlines` and the keyword rides along. A narrower
-corpus, but a narrow correct result beats a broad wrong one.
-
-This is why `capabilities(query)` **takes the query**: for two providers the honest answer depends
-on what else was asked for. Every `false` is enforced by `mergeFeedResults`, so the flags are
-behaviour, not documentation — a test asserts the NYT stops contributing off-category articles.
-
----
-
-## Key decisions
-
-- **Rate limits shaped the caching.** The NYT allows 5 requests/min and NewsAPI 100/day, so: search
-  is debounced, `staleTime` is 5 min with no refetch on focus, 4xx is never retried, and nginx
-  caches responses for 5 min with the credential excluded from the key — shared across tabs and
-  readers rather than per-session.
-- **Infinite scroll is not a second data path.** It asks for pages 1…N instead of N; all but the
-  newest are already cached, so the list is derived from the cache with no accumulator to drift.
-- **Untrusted input is validated.** `localStorage` can be hand-edited, and an unknown source id
-  there would reach `getSource`, which throws — blanking the page before first render.
-  `sanitizePreferences` narrows it field by field. An `ErrorBoundary` catches the rest.
-- **No hidden module state.** Which providers are refusing lives in the store and reaches the
-  transport through `FetchContext`; how a page was delivered is returned with it. `sources/` reads
-  no store and no environment.
-- **Every feed state is modelled** — skeletons, per-provider failure notices, a distinct all-failed
-  state, prompts for "no sources" and "nothing personalised", a page cap. Failures are classified
-  once in the transport into `rate-limited | auth | network | unknown`.
-
----
-
 ## Testing
 
 ```bash
@@ -237,37 +169,6 @@ npx vitest run --coverage   # 92% statements · 94% lines
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint, types, tests and a build on every
 push, then builds the image and smoke-tests a **keyless** container.
-
----
-
-## Limitations
-
-- **No URL state or router** — a search cannot be shared and Back does not step through filters. The
-  largest remaining gap; it would be `URLSearchParams` + `history` in `useFeedQuery`, not a routing
-  library, since there is one screen.
-- **Responses are typed, not schema-validated.** The adapters are defensive, but nothing parses
-  provider payloads at runtime. For production I would validate them.
-- **The NYT cannot filter by category or author** on the free tier, so those narrow the ten
-  documents that page returned rather than searching the archive.
-- **NewsAPI returns one category per request** (the UI says which) and its articles are up to 24 h
-  old, so they sort below the other two.
-- **Pagination is per-source**, so a merged page can hold fewer than `pageSize × sources` articles.
-  A strict global order would need a k-way merge.
-- **Preferences are per browser** — no accounts, no sync, no cross-tab updates until reload.
-- **No end-to-end tests.** The App suite covers most of what a browser test would, but not real
-  layout or the pre-paint theme script.
-- **Free tiers are development-only** — NewsAPI's plan forbids staging and production use.
-
----
-
-## Troubleshooting
-
-| Symptom                                    | Fix                                                         |
-| ------------------------------------------ | ----------------------------------------------------------- |
-| `Bind for 0.0.0.0:8080 failed`             | `HOST_PORT=8090 docker compose up --build`                  |
-| Everything says "sample articles"          | No keys — check `/api/status`, then fill `.env.local`       |
-| A provider rejects the key                 | The NYT issues a key _and_ a secret; this needs the **key** |
-| Live data works in `dev` but not `preview` | Preview has no provider proxy — use Docker                  |
 
 ---
 
