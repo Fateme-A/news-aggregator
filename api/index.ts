@@ -1,4 +1,11 @@
-import { handleNewsProxy } from '../src/server/news-proxy'
+/// <reference types="node" />
+// Vercel compiles this file against the root `tsconfig.json`, which is a
+// solution file (references only) and so carries no `compilerOptions`. It
+// therefore falls back to `nodenext`, where the explicit `.js` extension is
+// required and the `types` field of `tsconfig.node.json` never applies —
+// hence the reference above. Dropping either breaks the deployed function at
+// module load, not at call time.
+import { handleNewsProxy } from '../src/server/news-proxy.js'
 
 /**
  * Single entry point for every `/api/*` path, reached through the rewrite in
