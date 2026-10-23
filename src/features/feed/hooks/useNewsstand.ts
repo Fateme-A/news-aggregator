@@ -1,4 +1,7 @@
 import type { Article } from '@/domain/article'
+import { useSourceAvailability } from '@/features/data-mode/hooks/useSourceAvailability'
+import { useArticles, type SourceFailure } from '@/features/feed/hooks/useArticles'
+import { useFeedQuery, type FeedQuery } from '@/features/feed/hooks/useFeedQuery'
 import { describeClientFilters } from '@/features/feed/lib/describe-filters'
 import {
   canLoadMore as canLoadMoreFrom,
@@ -8,10 +11,7 @@ import {
   type FeedState,
 } from '@/features/feed/lib/feed-state'
 import { describePersonalisation } from '@/features/preferences/lib/summary'
-import { useArticles, type SourceFailure } from '@/features/feed/hooks/useArticles'
-import { useFeedQuery, type FeedQuery } from '@/features/feed/hooks/useFeedQuery'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import { useSourceAvailability } from '@/features/data-mode/hooks/useSourceAvailability'
 import { useDataMode, type DataPreference, type SourceDelivery } from '@/store/data-mode'
 import { usePreferences, type BrowseMode, type FeedMode } from '@/store/preferences'
 import { useCallback, useState, type RefObject } from 'react'
@@ -103,14 +103,6 @@ export function useNewsstand(): Newsstand {
 
   const { setPage, nextPage } = feed
 
-  const goToPage = useCallback(
-    (page: number) => {
-      setPage(page)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    },
-    [setPage],
-  )
-
   const changeFeedMode = useCallback(
     (mode: FeedMode) => {
       setFeedMode(mode)
@@ -179,7 +171,7 @@ export function useNewsstand(): Newsstand {
     open: setOpenDialog,
     close: useCallback(() => setOpenDialog(null), []),
 
-    goToPage,
+    goToPage: setPage,
     changeFeedMode,
     changeBrowseMode,
     changeDataPreference,
