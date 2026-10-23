@@ -71,6 +71,31 @@ export function EmptyState({ onReset }: { onReset?: () => void }) {
   )
 }
 
+/** My Feed returned nothing. Dates and Explore filters do not apply here. */
+export function PersonalisedEmptyState({
+  keyword,
+  onPersonalise,
+}: {
+  keyword: string
+  onPersonalise: () => void
+}) {
+  return (
+    <Placeholder
+      icon={<IconStar size={22} stroke={1.75} />}
+      title="Nothing matches My Feed"
+      action={
+        <Button variant="primary" onClick={onPersonalise}>
+          Personalise
+        </Button>
+      }
+    >
+      {keyword
+        ? `Nothing in your saved sources, categories, or authors matches “${keyword}”. Try another search, or change what you follow.`
+        : 'Your saved sources, categories, and authors didn’t match any articles. Change what you follow to see more.'}
+    </Placeholder>
+  )
+}
+
 /**
  * My Feed with nothing saved. A personalised feed would be the unfiltered feed,
  * so it asks for choices instead — and makes no request until it has some.

@@ -1,23 +1,24 @@
 import { AppHeader } from '@/components/layout/AppHeader'
-import { useNewsstand } from '@/features/feed/hooks/useNewsstand'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { DataModeNotice } from '@/features/data-mode/components/DataModeNotice'
 import { ArticleGrid } from '@/features/feed/components/ArticleGrid'
 import { FeedPagination, FeedSentinel } from '@/features/feed/components/FeedFooter'
 import { FeedNotices } from '@/features/feed/components/FeedNotices'
-import { FeedSidebar } from '@/features/feed/components/FeedSidebar'
 import {
   AllFailedState,
   EmptyState,
   NoSourcesState,
   PersonaliseState,
+  PersonalisedEmptyState,
 } from '@/features/feed/components/FeedPlaceholders'
+import { FeedSidebar } from '@/features/feed/components/FeedSidebar'
 import { FeedSkeleton } from '@/features/feed/components/FeedSkeleton'
-import { SourceFailureNotice } from '@/features/feed/components/SourceFailureNotice'
 import { FeedToolbar } from '@/features/feed/components/FeedToolbar'
 import { PersonalisedBanner } from '@/features/feed/components/PersonalisedBanner'
 import { ReadingAnchor } from '@/features/feed/components/ReadingAnchor'
+import { SourceFailureNotice } from '@/features/feed/components/SourceFailureNotice'
+import { useNewsstand } from '@/features/feed/hooks/useNewsstand'
 import { PreferencesDialog } from '@/features/preferences/components/PreferencesDialog'
 import { ActiveFilters } from '@/features/search/components/ActiveFilters'
 import { CategoryRail } from '@/features/search/components/CategoryRail'
@@ -113,7 +114,15 @@ export function App() {
           {state === 'no-sources' && <NoSourcesState />}
           {state === 'loading' && <FeedSkeleton />}
           {state === 'all-failed' && <AllFailedState failures={view.failures} />}
-          {state === 'empty' && <EmptyState onReset={feed.resetFilters} />}
+          {state === 'empty' &&
+            (feed.isMyFeed ? (
+              <PersonalisedEmptyState
+                keyword={feed.query.keyword}
+                onPersonalise={() => view.open('preferences')}
+              />
+            ) : (
+              <EmptyState onReset={feed.resetFilters} />
+            ))}
 
           {state === 'articles' && (
             <>

@@ -93,19 +93,26 @@ describe('rehydration', () => {
 })
 
 describe('hasPreferences', () => {
-  it('is false for an untouched install', () => {
+  it('is true while the default sources are selected', () => {
+    expect(usePreferences.getState().sources).toEqual([...ALL_SOURCE_IDS])
+    expect(usePreferences.getState().hasPreferences()).toBe(true)
+  })
+
+  it('is false only when sources, categories, and authors are all empty', () => {
+    usePreferences.setState({ sources: [], categories: [], authors: [] })
     expect(usePreferences.getState().hasPreferences()).toBe(false)
   })
 
   it('becomes true on any saved choice', () => {
+    usePreferences.setState({ sources: [], categories: [], authors: [] })
     usePreferences.getState().toggleCategory('science')
     expect(usePreferences.getState().hasPreferences()).toBe(true)
 
-    usePreferences.getState().reset()
+    usePreferences.setState({ sources: [], categories: [], authors: [] })
     usePreferences.getState().addAuthor('Fiona Harvey')
     expect(usePreferences.getState().hasPreferences()).toBe(true)
 
-    usePreferences.getState().reset()
+    usePreferences.setState({ sources: [], categories: [], authors: [] })
     usePreferences.getState().toggleSource('guardian')
     expect(usePreferences.getState().hasPreferences()).toBe(true)
   })

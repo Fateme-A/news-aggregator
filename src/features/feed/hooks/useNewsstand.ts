@@ -80,8 +80,8 @@ export function useNewsstand(): Newsstand {
   useSourceAvailability()
 
   const hasSources = feed.sources.length > 0
-  // Nothing saved means nothing to personalise with, so My Feed asks for
-  // choices rather than spending a request on an unfiltered feed.
+  // No sources, categories, or authors means nothing to follow, so My Feed asks
+  // for choices rather than fetching.
   const needsPersonalising = feed.isMyFeed && !hasPreferences
 
   const {

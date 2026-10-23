@@ -395,8 +395,43 @@ describe('App', () => {
       expect(usePreferences.getState().mode).toBe('my-feed')
     })
 
-    it('asks for choices instead of serving an unfiltered feed as a personalised one', async () => {
+    it('explains an empty My Feed as personalisation, not Explore filters', async () => {
       const user = userEvent.setup()
+      usePreferences.getState().addAuthor('Nobody Matches')
+      mockApi()
+      renderApp()
+
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+
+      expect(await screen.findByText(/nothing matches my feed/i)).toBeInTheDocument()
+      expect(screen.getByText(/saved sources, categories, and authors/i)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /clear all filters/i })).not.toBeInTheDocument()
+      expect(screen.queryByText(/widen the date range/i)).not.toBeInTheDocument()
+
+      const feed = within(screen.getByRole('main'))
+      await user.click(feed.getByRole('button', { name: /^personalise$/i }))
+      expect(
+        await screen.findByRole('dialog', { name: /personalise your feed/i }),
+      ).toBeInTheDocument()
+    })
+
+    it('opens My Feed from the sources selected by default', async () => {
+      const user = userEvent.setup()
+      mockApi()
+      renderApp()
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+
+      await user.click(screen.getByRole('button', { name: /my feed/i }))
+
+      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
+      expect(screen.queryByText(/nothing saved yet/i)).not.toBeInTheDocument()
+      expect(await screen.findByText(/showing your personalised feed/i)).toBeInTheDocument()
+    })
+
+    it('asks for choices when nothing is selected', async () => {
+      const user = userEvent.setup()
+      usePreferences.setState({ sources: [], categories: [], authors: [] })
       const { requests } = mockApi()
       renderApp()
 
@@ -407,14 +442,14 @@ describe('App', () => {
 
       expect(await screen.findByText(/nothing saved yet/i)).toBeInTheDocument()
       expect(articleItems()).toHaveLength(0)
-      // Nothing to personalise with means nothing worth spending a request on.
+      // Nothing to follow means nothing worth spending a request on.
       expect(requests).toHaveLength(beforeSwitch)
-      // …and it must not claim to be showing a personalised feed.
       expect(screen.queryByText(/showing your personalised feed/i)).not.toBeInTheDocument()
     })
 
     it('loads the personalised feed as soon as there is a choice to apply', async () => {
       const user = userEvent.setup()
+      usePreferences.setState({ sources: [], categories: [], authors: [] })
       mockApi()
       renderApp()
 
@@ -426,7 +461,8 @@ describe('App', () => {
       // the sidebar offer it too, so scope to the feed.
       const feed = within(screen.getByRole('main'))
       await user.click(feed.getByRole('button', { name: /^personalise$/i }))
-      await user.type(await screen.findByLabelText(/add an author/i), 'Fiona Harvey')
+      await user.click(await screen.findByRole('checkbox', { name: 'The Guardian' }))
+      await user.type(screen.getByLabelText(/add an author/i), 'Fiona Harvey')
       await user.click(screen.getByRole('button', { name: /^add$/i }))
       await user.click(screen.getByRole('button', { name: /^done$/i }))
 

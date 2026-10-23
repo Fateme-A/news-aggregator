@@ -1,8 +1,8 @@
+import { CATEGORIES, type Category, type SourceId } from '@/domain/article'
+import { toggle } from '@/lib/toggle'
+import { ALL_SOURCE_IDS } from '@/sources/registry'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { CATEGORIES, type Category, type SourceId } from '@/domain/article'
-import { ALL_SOURCE_IDS } from '@/sources/registry'
-import { toggle } from '@/lib/toggle'
 
 /**
  * Durable choices only. Transient search state — keyword, date range, page —
@@ -34,7 +34,7 @@ export interface PreferencesState extends StoredPreferences {
   setMode: (mode: FeedMode) => void
   setBrowseMode: (mode: BrowseMode) => void
   reset: () => void
-  /** True once the user has expressed any preference at all. */
+  /** True when My Feed has at least one source, category, or author to follow. */
   hasPreferences: () => boolean
 }
 
@@ -115,9 +115,9 @@ export const usePreferences = create<PreferencesState>()(
 
       hasPreferences: () => {
         const { categories, authors, sources } = get()
-        return (
-          categories.length > 0 || authors.length > 0 || sources.length !== ALL_SOURCE_IDS.length
-        )
+        // The default selection is every source. That is still a feed to show:
+        // My Feed should not ask for choices while those sources are checked.
+        return categories.length > 0 || authors.length > 0 || sources.length > 0
       },
     }),
     {

@@ -7,7 +7,6 @@ interface AppHeaderProps {
   keyword: string
   onKeywordChange: (value: string) => void
   isSearching: boolean
-  /** Explore only: My Feed is shaped by Personalise, not by these filters. */
   showFilterButton: boolean
   activeFilterCount: number
   usingSample: boolean
@@ -32,12 +31,6 @@ export function AppHeader({
       data-sticky-header
       className="sticky top-0 z-30 border-b border-border/70 bg-canvas/80 backdrop-blur-xl"
     >
-      {/*
-        One wrapping row, not two headers. Below `lg` the search takes its own
-        full-width line; from `lg`, `order` slots it between the brand and the
-        buttons. Every control is a single DOM node at every width, so the two
-        presentations cannot drift apart.
-      */}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 sm:px-6 lg:h-20 lg:flex-nowrap lg:gap-x-6 lg:py-0">
         <h1 className="order-1 mr-auto min-w-0 lg:mr-0">
           <a
@@ -86,7 +79,6 @@ export function AppHeader({
             className="order-1 h-11 shrink-0 px-3.5 lg:hidden"
           >
             <IconFilter size={18} stroke={1.75} aria-hidden />
-            Filter
             {activeFilterCount > 0 && (
               <span className="grid min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-semibold text-canvas">
                 {activeFilterCount}

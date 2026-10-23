@@ -24,8 +24,9 @@ React 19 · TypeScript (strict) · Vite 8 · TanStack Query · Zustand · Tailwi
 - **Filters** — source, category, inclusive date range. Each applied filter is a removable chip
   above the results, with "Clear all".
 - **Personalisation** — sources, categories and authors saved to `localStorage` and validated on
-  load. Authors can be picked from contributors already in the loaded feed. With nothing saved,
-  My Feed asks for choices instead of quietly serving the unfiltered feed.
+  load. Authors can be picked from contributors already in the loaded feed. The three sources
+  start selected, so My Feed can open immediately. With no sources, categories, or authors
+  selected, it asks for choices instead of fetching.
 - **One merged feed** — normalised to a single `Article` model, deduplicated by URL and by headline
   within a 48-hour window, newest first.
 - **Browsing** — pages, or infinite scroll that holds your reading position when a newly loaded
