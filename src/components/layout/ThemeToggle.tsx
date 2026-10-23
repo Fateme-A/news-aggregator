@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button'
 import { themeControlLabel, useTheme, type ThemeChoice } from '@/store/theme'
 import { IconDeviceDesktop, IconMoon, IconSun } from '@tabler/icons-react'
+import { useShallow } from 'zustand/react/shallow'
 
 const ICONS: Record<ThemeChoice, typeof IconSun> = {
   light: IconSun,
@@ -9,8 +10,12 @@ const ICONS: Record<ThemeChoice, typeof IconSun> = {
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const choice = useTheme((state) => state.choice)
-  const cycleChoice = useTheme((state) => state.cycleChoice)
+  const { choice, cycleChoice } = useTheme(
+    useShallow((state) => ({
+      choice: state.choice,
+      cycleChoice: state.cycleChoice,
+    })),
+  )
   const Icon = ICONS[choice]
 
   return (

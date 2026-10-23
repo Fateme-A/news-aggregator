@@ -13,6 +13,7 @@ import { getSource } from '@/sources/registry'
 import { useDataMode, type SourceDelivery } from '@/store/data-mode'
 import { keepPreviousData, useQueries } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 export type { ClientFilter, SourceFailure }
 
@@ -52,8 +53,12 @@ export function useArticles(
 ): UseArticlesResult {
   const { enabled = true, accumulate = false } = options
 
-  const mode = useDataMode((state) => state.preference)
-  const availability = useDataMode((state) => state.availability)
+  const { preference: mode, availability } = useDataMode(
+    useShallow((state) => ({
+      preference: state.preference,
+      availability: state.availability,
+    })),
+  )
   const isResolvingMode = enabled && mode === 'auto' && availability === 'pending'
   const ready = enabled && !isResolvingMode
 

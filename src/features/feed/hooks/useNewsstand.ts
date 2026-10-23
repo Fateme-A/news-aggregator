@@ -15,6 +15,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { useDataMode, type DataPreference, type SourceDelivery } from '@/store/data-mode'
 import { usePreferences, type BrowseMode, type FeedMode } from '@/store/preferences'
 import { useCallback, useState, type RefObject } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 export type DialogName = 'filters' | 'preferences' | 'settings'
 
@@ -56,16 +57,32 @@ export function useNewsstand(): Newsstand {
   const feed = useFeedQuery()
   const [openDialog, setOpenDialog] = useState<DialogName | null>(null)
 
-  const feedMode = usePreferences((state) => state.mode)
-  const setFeedMode = usePreferences((state) => state.setMode)
-  const browseMode = usePreferences((state) => state.browseMode)
-  const setBrowseMode = usePreferences((state) => state.setBrowseMode)
-  const savedCategories = usePreferences((state) => state.categories)
-  const savedAuthors = usePreferences((state) => state.authors)
-  const hasPreferences = usePreferences((state) => state.hasPreferences())
+  const {
+    mode: feedMode,
+    setMode: setFeedMode,
+    browseMode,
+    setBrowseMode,
+    categories: savedCategories,
+    authors: savedAuthors,
+    hasPreferences,
+  } = usePreferences(
+    useShallow((state) => ({
+      mode: state.mode,
+      setMode: state.setMode,
+      browseMode: state.browseMode,
+      setBrowseMode: state.setBrowseMode,
+      categories: state.categories,
+      authors: state.authors,
+      hasPreferences: state.hasPreferences(),
+    })),
+  )
 
-  const dataPreference = useDataMode((state) => state.preference)
-  const setDataPreference = useDataMode((state) => state.setPreference)
+  const { preference: dataPreference, setPreference: setDataPreference } = useDataMode(
+    useShallow((state) => ({
+      preference: state.preference,
+      setPreference: state.setPreference,
+    })),
+  )
   useSourceAvailability()
 
   const hasSources = feed.sources.length > 0

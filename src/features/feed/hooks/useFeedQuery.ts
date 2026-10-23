@@ -10,6 +10,7 @@ import type { ExploreFilters } from '@/features/search/lib/filters'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePreferences } from '@/store/preferences'
 import { useMemo, useReducer } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 export interface FeedQuery {
   /** Raw keyword, for the controlled input. */
@@ -80,10 +81,19 @@ function toArticleQuery({
 export function useFeedQuery(): FeedQuery {
   const [explore, dispatch] = useReducer(exploreReducer, INITIAL_EXPLORE)
 
-  const mode = usePreferences((state) => state.mode)
-  const savedSources = usePreferences((state) => state.sources)
-  const savedCategories = usePreferences((state) => state.categories)
-  const savedAuthors = usePreferences((state) => state.authors)
+  const {
+    mode,
+    sources: savedSources,
+    categories: savedCategories,
+    authors: savedAuthors,
+  } = usePreferences(
+    useShallow((state) => ({
+      mode: state.mode,
+      sources: state.sources,
+      categories: state.categories,
+      authors: state.authors,
+    })),
+  )
 
   const isMyFeed = mode === 'my-feed'
   const keyword = useDebouncedValue(explore.keyword, 400)

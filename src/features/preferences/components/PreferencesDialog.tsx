@@ -11,6 +11,7 @@ import { SOURCES } from '@/sources/registry'
 import { usePreferences } from '@/store/preferences'
 import { IconPlus, IconX } from '@tabler/icons-react'
 import { useState, type FormEvent } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 interface PreferencesDialogProps {
   open: boolean
@@ -18,16 +19,29 @@ interface PreferencesDialogProps {
 }
 
 export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps) {
-  // Selectors, not the whole store: an unselected `usePreferences()` re-renders
-  // on every unrelated change.
-  const sources = usePreferences((state) => state.sources)
-  const categories = usePreferences((state) => state.categories)
-  const authors = usePreferences((state) => state.authors)
-  const toggleSource = usePreferences((state) => state.toggleSource)
-  const toggleCategory = usePreferences((state) => state.toggleCategory)
-  const addAuthor = usePreferences((state) => state.addAuthor)
-  const removeAuthor = usePreferences((state) => state.removeAuthor)
-  const reset = usePreferences((state) => state.reset)
+  // One read, compared field by field. Selecting the whole store would re-render
+  // this dialog on every unrelated preference change.
+  const {
+    sources,
+    categories,
+    authors,
+    toggleSource,
+    toggleCategory,
+    addAuthor,
+    removeAuthor,
+    reset,
+  } = usePreferences(
+    useShallow((state) => ({
+      sources: state.sources,
+      categories: state.categories,
+      authors: state.authors,
+      toggleSource: state.toggleSource,
+      toggleCategory: state.toggleCategory,
+      addAuthor: state.addAuthor,
+      removeAuthor: state.removeAuthor,
+      reset: state.reset,
+    })),
+  )
   const [authorDraft, setAuthorDraft] = useState('')
 
   const chosen = new Set(authors.map(normaliseAuthor))

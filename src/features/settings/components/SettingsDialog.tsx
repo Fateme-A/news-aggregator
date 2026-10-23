@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
-import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { Section } from '@/components/ui/Section'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { describeDataMode } from '@/features/data-mode/lib/describe'
 import { useDataMode, type DataPreference, type SourceDelivery } from '@/store/data-mode'
 import { usePreferences, type BrowseMode } from '@/store/preferences'
