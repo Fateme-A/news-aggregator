@@ -6,7 +6,6 @@ import { IconAdjustmentsHorizontal, IconFilter, IconSettings } from '@tabler/ico
 interface AppHeaderProps {
   keyword: string
   onKeywordChange: (value: string) => void
-  isSearching: boolean
   showFilterButton: boolean
   activeFilterCount: number
   usingSample: boolean
@@ -18,7 +17,6 @@ interface AppHeaderProps {
 export function AppHeader({
   keyword,
   onKeywordChange,
-  isSearching,
   showFilterButton,
   activeFilterCount,
   usingSample,
@@ -51,7 +49,7 @@ export function AppHeader({
 
         <div className="order-2 flex min-w-0 basis-full items-center gap-2 lg:contents">
           <div className="min-w-0 flex-1 lg:order-2">
-            <SearchBar value={keyword} onChange={onKeywordChange} isSearching={isSearching} />
+            <SearchBar value={keyword} onChange={onKeywordChange} />
           </div>
         </div>
 

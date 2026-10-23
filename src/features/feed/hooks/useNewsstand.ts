@@ -27,7 +27,6 @@ export interface Newsstand {
   failures: SourceFailure[]
   /** Disclosures about filters applied in the browser, and coverage gaps. */
   notices: string[]
-  isSearching: boolean
 
   deliveries: SourceDelivery[]
   isResolvingMode: boolean
@@ -150,7 +149,6 @@ export function useNewsstand(): Newsstand {
     articles,
     failures,
     notices: clientFilterNotice ? [clientFilterNotice, ...caveats] : caveats,
-    isSearching: isFetching && !isLoading,
 
     deliveries,
     isResolvingMode,
