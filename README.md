@@ -8,12 +8,14 @@ React 19 · TypeScript (strict) · Vite 8 · TanStack Query · Zustand · Tailwi
 
 Live: <https://news-aggregator-one-beta.vercel.app/>
 
-![Newsstand on a phone](docs/screenshot.png)
+![Newsstand](docs/screenshots/desktop.png)
+
+![Newsstand on a phone](docs/screenshots/mobile.png)
 
 |            |                                                                                            |
 | ---------- | ------------------------------------------------------------------------------------------ |
 | **Live**   | <https://news-aggregator-one-beta.vercel.app/>                                             |
-| **Run it** | `docker compose up --build` → <http://localhost:8080> — no API keys needed                 |
+| **Run it** | Put the API keys in `.env.local`, then `docker compose up --build` → <http://localhost:8080> |
 | **Keys**   | Server-side only; never in the bundle, never in an image layer                             |
 | **Tests**  | 204 across 21 files · 92% statements, 94% lines                                            |
 | **Bundle** | 135 kB gzipped JS, 8 kB gzipped CSS · 9 runtime dependencies                               |
@@ -37,8 +39,7 @@ Live: <https://news-aggregator-one-beta.vercel.app/>
 - **Browsing** — pages, or infinite scroll that holds your reading position when a newly loaded
   page merges into the middle of the list.
 - **Resilience** — a failing provider becomes a notice while the others render; only a total
-  failure is an error state. Every provider can fall back to a recorded sample, so the app is fully
-  usable with no API keys.
+  failure is an error state. A provider that refuses can fall back to a recorded sample.
 - Light / dark / system theme, responsive from 320 px, keyboard accessible.
 
 **Not implemented:** no router or URL state, so a search cannot be shared as a link.
@@ -48,19 +49,13 @@ Live: <https://news-aggregator-one-beta.vercel.app/>
 ## Quick start
 
 ```bash
+cp .env.example .env.local         # fill in GUARDIAN_KEY, NYT_KEY, and NEWSAPI_KEY
 docker compose up --build          # → http://localhost:8080
-HOST_PORT=8090 docker compose up   # when 8080 is taken
+HOST_PORT=8090 docker compose up --build   # when 8080 is taken
 ```
 
-Without an `.env.local`, every provider serves its recorded sample and a notice above the feed says
-so, naming the reason per provider. Everything still works against that sample. For live data:
-
-```bash
-cp .env.example .env.local         # fill in the three keys
-docker compose up --build
-```
-
-Keys are read at **container start**, not build time, so the image holds no credentials.
+Docker reads those keys from `.env.local` when the container starts. Live articles need them, and
+they are not baked into the image.
 
 ### Deploy on Vercel
 
@@ -76,8 +71,7 @@ npx vercel --prod
 `api/index.ts` attaches those values on the server. They are not in the repository and not in the
 JavaScript bundle. Leave a variable empty to keep that provider on its recorded sample.
 
-Docker does not receive these keys from git. Someone running the container still needs their own
-`.env.local`, or they get the samples.
+Docker does not receive these keys from git. Running the container needs `.env.local` filled in.
 
 ### Local development
 
@@ -98,8 +92,8 @@ Type check and coverage have no script of their own: `npx tsc -b`, `npx vitest r
 
 ## Configuration
 
-All three keys are free and self-serve; put them in `.env.local` (git- and Docker-ignored).
-**Every key is optional** — a blank one puts that provider on its sample while the others stay live.
+All three keys are free and self-serve. Put them in `.env.local` (git-ignored) before
+`docker compose up`. Docker reads that file at container start.
 
 | Variable       | Where                                                                             | Free tier               |
 | -------------- | --------------------------------------------------------------------------------- | ----------------------- |
