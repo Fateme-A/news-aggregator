@@ -38,7 +38,6 @@ export function matchesAuthors(article: Article, authors: readonly string[]): bo
   return authors.some((name) => actual.includes(normaliseAuthor(name)))
 }
 
-/** Title, summary and byline — the fields a reader would expect to search. */
 export function matchesKeyword(article: Article, keyword: string): boolean {
   const needle = keyword.trim().toLowerCase()
   if (!needle) return true

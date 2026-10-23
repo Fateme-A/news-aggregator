@@ -18,7 +18,6 @@ export interface ClientFilter {
   filters: string[]
 }
 
-/** One source, one page. Pairs each query with the source that produced it. */
 export interface PageRequest {
   sourceId: SourceId
   page: number
@@ -73,7 +72,6 @@ export function clientFiltersFor(source: NewsSource, query: ArticleQuery): strin
   return filters
 }
 
-/** Groups the flat result list back onto the source that produced each entry. */
 function groupBySource(
   requests: readonly PageRequest[],
   results: readonly PageResult[],

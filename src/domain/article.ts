@@ -1,8 +1,3 @@
-/**
- * The normalised article model. Adapters map every wire format into this one
- * type; nothing outside `src/sources/<provider>/` knows the originals.
- */
-
 /** Identifier for a configured provider. Extended by adding to the registry. */
 export type SourceId = 'guardian' | 'nytimes' | 'newsapi'
 
@@ -38,14 +33,12 @@ export interface Article {
   id: string
   title: string
   description: string
-  /** Canonical link to the article on the publisher's own site. */
   url: string
   imageUrl?: string
   /** ISO-8601 timestamp. */
   publishedAt: string
   author?: string
   category?: Category
-  /** Which provider supplied this, and the human-readable outlet name. */
   source: {
     id: SourceId
     /** Outlet name, e.g. "The Guardian", "Wired". May differ from the provider. */

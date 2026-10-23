@@ -25,11 +25,7 @@ function classify(status: number): NewsSourceError['kind'] {
   return 'unknown'
 }
 
-/**
- * The one place a request leaves the app. Transport only: timeout,
- * cancellation, status-to-error mapping, and handing off to the recorded
- * sample when `FetchContext` says to. Reads no store and no environment.
- */
+/** Transport only. Reads no store or environment; demo fallback comes from `FetchContext`. */
 export async function fetchJson<T>(
   sourceId: SourceId,
   url: string,

@@ -1,10 +1,4 @@
-/**
- * The Guardian Content API wire format.
- *
- * Hand-written from a recorded live response (`src/samples/guardian-search.json`)
- * rather than from the docs, so the optionality below reflects what the API
- * actually sends. Nothing outside this folder imports these types.
- */
+/** Guardian Content API wire format, taken from a recorded response rather than the docs. */
 
 export interface GuardianTag {
   id: string

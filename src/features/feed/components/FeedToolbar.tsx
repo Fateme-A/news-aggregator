@@ -14,7 +14,6 @@ interface FeedToolbarProps {
   keyword: string
 }
 
-/** Feed mode and the result count — a bottom bar on a phone, inline from `lg`. */
 export function FeedToolbar({ mode, onModeChange, articleCount, keyword }: FeedToolbarProps) {
   return (
     <div className="mb-4 flex items-center justify-between gap-4 lg:mb-5">

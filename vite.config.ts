@@ -17,13 +17,9 @@ import tailwindcss from '@tailwindcss/vite'
  * Keep the two in sync when adding a provider.
  */
 interface Upstream {
-  /** Origin to forward to. */
   origin: string
-  /** Path segment prepended to the forwarded request. */
   basePath: string
-  /** How this provider expects its credential. */
   auth: { kind: 'query'; param: string } | { kind: 'header'; name: string }
-  /** Name of the env var holding the key. */
   envVar: string
 }
 
@@ -111,8 +107,6 @@ function buildProxy(env: Record<string, string>): Record<string, ProxyOptions> {
       target: up.origin,
       changeOrigin: true,
       rewrite: (path) => {
-        // `path` arrives as `/api/<id>/rest?query`; strip the prefix, prepend the
-        // provider's base path, and attach the credential if it goes in the query.
         const [rest = '', search = ''] = path.slice(prefix.length).split('?')
         const params = new URLSearchParams(search)
         if (up.auth.kind === 'query') params.set(up.auth.param, key)

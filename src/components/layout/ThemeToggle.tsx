@@ -8,7 +8,6 @@ const ICONS: Record<ThemeChoice, typeof IconSun> = {
   system: IconDeviceDesktop,
 }
 
-/** Owns the theme store outright: nothing else on the page depends on it. */
 export function ThemeToggle({ className }: { className?: string }) {
   const choice = useTheme((state) => state.choice)
   const cycleChoice = useTheme((state) => state.cycleChoice)

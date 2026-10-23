@@ -8,7 +8,6 @@
 /** Decided by the caller, never by the transport. */
 export type DataMode = 'auto' | 'live' | 'demo'
 
-/** Why the recorded sample was served instead of a live response. */
 export type DemoReason = 'chosen' | 'missing-key' | 'rate-limited' | 'auth'
 
 export interface Delivery {

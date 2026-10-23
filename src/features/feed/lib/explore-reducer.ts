@@ -3,7 +3,6 @@ import type { ExploreFilters } from '@/features/search/lib/filters'
 import { toggle } from '@/lib/toggle'
 import { ALL_SOURCE_IDS } from '@/sources/registry'
 
-/** Explore's inputs, plus where in the results the reader is. */
 export interface ExploreState extends ExploreFilters {
   keyword: string
   page: number

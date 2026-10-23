@@ -9,7 +9,6 @@ interface SectionProps {
   first?: boolean
 }
 
-/** A labelled group inside a panel or dialog. */
 export function Section({ title, children, action, first }: SectionProps) {
   return (
     <section className={first ? 'pb-5' : 'py-5'}>

@@ -4,10 +4,7 @@ import { guardianSource } from './guardian/adapter'
 import { newsapiSource } from './newsapi/adapter'
 import { nytimesSource } from './nytimes/adapter'
 
-/**
- * The single extension point. A fourth provider is
- * `src/sources/<name>/{adapter,mapper,types}.ts` plus a line in this array.
- */
+/** A new provider is `src/sources/<name>/{adapter,mapper,types}.ts` plus a line here. */
 export const SOURCES: readonly NewsSource[] = [guardianSource, nytimesSource, newsapiSource]
 
 const BY_ID = new Map<SourceId, NewsSource>(SOURCES.map((source) => [source.id, source]))

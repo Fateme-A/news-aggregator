@@ -42,9 +42,7 @@ export const newsapiSource: NewsSource = {
     return {
       // No author parameter on either endpoint.
       authorFilter: false,
-      // Only /top-headlines filters by category, and only one at a time.
       categoryFilter: topHeadlines && query.categories.length === 1,
-      // /top-headlines silently ignores `from`/`to`.
       dateRangeFilter: !topHeadlines,
       // A second category is not something the browser can re-apply: those
       // articles were never in the response.

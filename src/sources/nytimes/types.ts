@@ -38,11 +38,7 @@ export interface NytDoc {
 
 export interface NytSearchResponse {
   status: string
-  /**
-   * `docs` is `null`, not `[]`, whenever the query matches nothing — confirmed
-   * against the live API. Typing it as a bare array would have been a lie the
-   * adapter was quietly compensating for with `?? []`.
-   */
+  /** `docs` is `null`, not `[]`, when a query matches nothing. */
   response?: {
     docs: NytDoc[] | null
     metadata?: { hits?: number; offset?: number; time?: number } | null

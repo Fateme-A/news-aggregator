@@ -19,7 +19,6 @@ import { useCallback, useState, type RefObject } from 'react'
 export type DialogName = 'filters' | 'preferences' | 'settings'
 
 export interface Newsstand {
-  /** Search and filter inputs, passed straight to the panels that edit them. */
   feed: FeedQuery
 
   state: FeedState
@@ -52,16 +51,7 @@ export interface Newsstand {
   changeDataPreference: (preference: DataPreference) => void
 }
 
-/**
- * The screen's view model.
- *
- * Everything the app derives — which state the feed is in, what the footer
- * says, whether a sample is in play, what personalisation is saved — is worked
- * out here from pure helpers, so the components below render a value instead of
- * computing one. The orchestration order also matters and is easier to follow
- * in one place: `needsPersonalising` has to be known before `useArticles` runs,
- * because it decides whether a request is made at all.
- */
+/** Resolve `needsPersonalising` before `useArticles`; it decides whether a request is made. */
 export function useNewsstand(): Newsstand {
   const feed = useFeedQuery()
   const [openDialog, setOpenDialog] = useState<DialogName | null>(null)

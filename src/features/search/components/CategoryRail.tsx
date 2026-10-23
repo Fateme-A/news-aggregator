@@ -4,12 +4,6 @@ import { cn } from '@/lib/cn'
 import type { Category } from '@/domain/article'
 import { CATEGORIES, CATEGORY_LABELS } from '@/domain/article'
 
-/**
- * The category filter as a swipeable rail, below `lg` only, where the sidebar
- * is behind a sheet and the most-used filter would otherwise cost two taps.
- * Bleeds to the viewport edges so chips run off-screen, signalling that it
- * scrolls; the scroll itself is contained (the `rail` utility in `index.css`).
- */
 interface CategoryRailProps {
   selected: Category[]
   onToggle: (category: Category) => void
@@ -17,6 +11,7 @@ interface CategoryRailProps {
   className?: string
 }
 
+/** Category chips below `lg`, where the sidebar is behind a sheet. */
 export function CategoryRail({ selected, onToggle, onClear, className }: CategoryRailProps) {
   return (
     <div className={cn('-mx-4 sm:-mx-6', className)}>

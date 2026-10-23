@@ -34,10 +34,8 @@ export const nytimesSource: NewsSource = {
   label: 'The New York Times',
 
   capabilities: (): SourceCapabilities => ({
-    // See the `fq` note above: both of these are applied client-side.
     authorFilter: false,
     categoryFilter: false,
-    // begin_date/end_date work; verified against the live API.
     dateRangeFilter: true,
   }),
 

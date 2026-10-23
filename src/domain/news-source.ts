@@ -30,29 +30,20 @@ export interface FetchContext {
   mode: DataMode
   /** Which providers have a key configured. Omitted means "assume they all do". */
   configured?: Partial<Record<SourceId, boolean>>
-  /**
-   * Providers already known to be refusing, so Auto stops spending quota on
-   * them. Supplied by the caller rather than read from a store, which is what
-   * keeps `sources/` free of application state.
-   */
+  /** Providers already refusing, so Auto does not spend more quota on them. */
   suppressed?: Partial<Record<SourceId, DemoReason>>
-  /** Reports a provider that has just started refusing. */
   onSuppress?: (sourceId: SourceId, reason: DemoReason) => void
 }
 
 /**
- * The port every provider implements. Adding one means a new folder under
- * `src/sources/`, a line in `registry.ts`, and an entry in the two proxy tables
- * (`vite.config.ts`, `nginx.conf.template`).
+ * Adding a provider means a folder under `src/sources/`, a line in `registry.ts`,
+ * and an entry in both proxy tables (`vite.config.ts`, `nginx.conf.template`).
  */
 export interface NewsSource {
   readonly id: SourceId
-  /** Human-readable name shown in filter chips and on article cards. */
   readonly label: string
-  /** Canonical categories this provider can actually return. */
   readonly supportedCategories: readonly Category[]
 
-  /** What this provider will honour server-side for this particular query. */
   capabilities(query: ArticleQuery): SourceCapabilities
 
   /**

@@ -1,20 +1,12 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 interface InfiniteScrollOptions {
-  /** False while paging, at the cap, or with a request already in flight. */
   enabled: boolean
   onLoadMore: () => void
-  /** How far ahead of the sentinel to start the next page. */
   rootMargin?: string
 }
 
-/**
- * Asks for one more page when the returned ref scrolls into view.
- *
- * The caller decides whether that costs a request: pages already fetched come
- * back from the query cache. `IntersectionObserver` is feature-detected because
- * jsdom does not implement it.
- */
+/** `IntersectionObserver` is feature-detected because jsdom does not implement it. */
 export function useInfiniteScroll({
   enabled,
   onLoadMore,

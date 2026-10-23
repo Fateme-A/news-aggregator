@@ -3,11 +3,8 @@ import type { DataMode, DemoReason } from '@/domain/delivery'
 import type { FetchContext } from '@/domain/news-source'
 
 /**
- * A `FetchContext` for adapter tests.
- *
- * `suppressed` is a plain record the caller owns — pass the same one to
- * successive calls to model a session, or a fresh one to model the reader
- * changing mode, which is what clears it in the real store.
+ * Pass the same `suppressed` record across calls to model a session; a fresh
+ * one models a mode change.
  */
 export function context(
   mode: DataMode = 'live',

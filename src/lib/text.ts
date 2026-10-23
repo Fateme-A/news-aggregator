@@ -26,7 +26,6 @@ export function normaliseAuthor(input: string): string {
     .trim()
 }
 
-/** Split a combined byline ("A, B and C") into individual contributor names. */
 export function splitByline(byline: string): string[] {
   return byline
     .replace(/^by\s+/i, '')
@@ -35,7 +34,6 @@ export function splitByline(byline: string): string[] {
     .filter(Boolean)
 }
 
-/** "1 category" / "3 categories". */
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`
 }

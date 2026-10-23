@@ -128,16 +128,14 @@ describe('App', () => {
 
       await user.click(screen.getByRole('checkbox', { name: /the guardian/i }))
 
-      // The articles go…
       await waitFor(() =>
         expect(
           screen.queryByText(/Energy secretary leaning towards rejecting Rosebank/i),
         ).not.toBeInTheDocument(),
       )
-      // …the other sources stay…
       expect(articleItems().length).toBeGreaterThan(0)
 
-      // …and a subsequent search fans out to two providers, not three.
+      // A subsequent search fans out to two providers, not three.
       const before = requests.length
       await user.type(screen.getByLabelText(/search articles/i), 'climate')
       await waitFor(() => expect(requests.length).toBeGreaterThan(before), { timeout: 2000 })
@@ -174,9 +172,8 @@ describe('App', () => {
 
       await waitFor(
         () => {
-          // The Guardian takes ISO dates…
           expect(requests.some((url) => url.includes('from-date=2026-01-01'))).toBe(true)
-          // …while the NYT requires YYYYMMDD. Both come from one domain value.
+          // The NYT requires YYYYMMDD. Both come from one domain value.
           expect(requests.some((url) => url.includes('begin_date=20260101'))).toBe(true)
         },
         { timeout: 2000 },
@@ -244,7 +241,6 @@ describe('App', () => {
         screen.queryByText(/Jackdaw approval is a step towards a grownup North Sea policy/i),
       ).not.toBeInTheDocument()
 
-      // …and genuinely on-category stories survive from both.
       expect(
         screen.getByText(/Overlapping Plagues Are Killing American Forests/i),
       ).toBeInTheDocument()
@@ -344,9 +340,7 @@ describe('App', () => {
 
       await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
 
-      // The rate-limit message surfaces…
       expect(await screen.findByText(/rate limit/i)).toBeInTheDocument()
-      // …and the working sources still produced a feed.
       expect(articleItems().length).toBeGreaterThan(0)
     })
 
@@ -546,7 +540,7 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: 'Auto' }))
       expect(useDataMode.getState().preference).toBe('auto')
       expect(screen.getByRole('button', { name: 'Auto' })).toHaveAttribute('aria-pressed', 'true')
-      // …and the control must not claim to be Live while it is actually Auto.
+      // Must not claim to be Live while the preference is Auto.
       expect(screen.getByRole('button', { name: 'Live' })).toHaveAttribute('aria-pressed', 'false')
     })
 

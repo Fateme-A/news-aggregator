@@ -4,7 +4,6 @@ import { cn } from '@/lib/cn'
 import { IconAlertCircle, IconList, IconSearch, IconStar } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 
-/** The shared frame for every "nothing to show here" screen. */
 function Placeholder({
   icon,
   title,

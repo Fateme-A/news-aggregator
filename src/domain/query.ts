@@ -29,7 +29,6 @@ export interface ArticlePage {
   delivery: Delivery
   /** Total matches reported by the provider, when it reports one. */
   totalResults?: number
-  /** Whether another page is available. */
   hasMore: boolean
 }
 

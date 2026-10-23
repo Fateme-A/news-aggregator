@@ -9,12 +9,8 @@ import newsapiHeadlinesSample from '@/samples/newsapi-topheadlines.json'
 import nytSample from '@/samples/nyt-search.json'
 
 /**
- * Serves recorded samples when a provider cannot be called.
- *
- * Everything this needs arrives in `FetchContext` and everything it produces is
- * returned, so the module holds no state: which providers are refusing is the
- * caller's to remember, and the delivery travels back with the page rather than
- * being stashed somewhere for the caller to look up afterwards.
+ * Recorded samples when a provider cannot be called. Stateless; delivery is
+ * returned on the page.
  */
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -31,7 +27,6 @@ function sampleFor(sourceId: SourceId, url: string): unknown {
   return url.includes('top-headlines') ? newsapiHeadlinesSample : newsapiEverythingSample
 }
 
-/** Returns `'live'` to go to the network, or the reason to serve the sample. */
 export function planDelivery(sourceId: SourceId, context: FetchContext): 'live' | DemoReason {
   if (context.mode === 'demo') return 'chosen'
   if (context.mode === 'live') return 'live'
@@ -41,7 +36,6 @@ export function planDelivery(sourceId: SourceId, context: FetchContext): 'live' 
   return context.suppressed?.[sourceId] ?? 'live'
 }
 
-/** Whether a live failure may fall back to the sample, and why. */
 export function planRecovery(context: FetchContext, error: NewsSourceError): DemoReason | null {
   if (context.mode !== 'auto') return null
   if (error.kind !== 'rate-limited' && error.kind !== 'auth') return null

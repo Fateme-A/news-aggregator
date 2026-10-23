@@ -5,10 +5,6 @@ import { apiBase, buildQuery, fetchJson } from '@/sources/http'
 import { sectionsParam, toArticle } from './mapper'
 import type { GuardianSearchResponse } from './types'
 
-/**
- * The Guardian Content API. Filters by keyword, date, section and contributor
- * server-side. 5,000 requests/day, archive back to 1999.
- */
 export const guardianSource: NewsSource = {
   id: 'guardian',
   label: 'The Guardian',

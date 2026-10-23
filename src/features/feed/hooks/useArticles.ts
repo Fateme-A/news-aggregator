@@ -62,7 +62,6 @@ export function useArticles(
 
   const page = Math.min(query.page, MAX_PAGES)
 
-  /** Every (source, page) pair this feed needs, in query order. */
   const requests = useMemo<PageRequest[]>(() => {
     const pages = accumulate ? Array.from({ length: page }, (_, index) => index + 1) : [page]
     return selectedSources.flatMap((sourceId) =>

@@ -33,7 +33,6 @@ export function resolveFeedState({
   return 'articles'
 }
 
-/** What the end of an infinite-scroll feed says. */
 export type FeedFooterState = 'loading' | 'page-cap' | 'more' | 'end'
 
 export interface FeedFooterInput {

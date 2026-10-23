@@ -31,7 +31,6 @@ interface SentinelProps {
   sentinelRef: RefObject<HTMLDivElement | null>
 }
 
-/** The end of an infinite feed, and the element whose visibility loads the next page. */
 export function FeedSentinel({ state, sentinelRef }: SentinelProps) {
   return (
     <div ref={sentinelRef} className="mt-8 flex justify-center sm:mt-10">

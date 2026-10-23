@@ -52,19 +52,15 @@ export function applyTheme(theme: Theme) {
 
 interface ThemeState {
   choice: ThemeChoice
-  /** The resolved theme, for components that render a light/dark affordance. */
   theme: Theme
   setChoice: (choice: ThemeChoice) => void
-  /** Light → Dark → System → Light, for the single header control. */
   cycleChoice: () => void
 }
 
-/** The choice one step on from `choice`, so the control can name where it goes. */
 export function nextChoice(choice: ThemeChoice): ThemeChoice {
   return THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length]!
 }
 
-/** Names both the current choice and the next, so a cycling control is legible. */
 export function themeControlLabel(choice: ThemeChoice): string {
   return `Theme: ${THEME_LABELS[choice]}. Switch to ${THEME_LABELS[nextChoice(choice)].toLowerCase()}.`
 }

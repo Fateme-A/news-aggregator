@@ -76,10 +76,7 @@ function toArticleQuery({
   }
 }
 
-/**
- * Decides what to ask for. Explore's inputs live in a reducer and reset on
- * reload; My Feed's are the saved preferences.
- */
+/** Explore's inputs live in a reducer and reset on reload; My Feed's are the saved preferences. */
 export function useFeedQuery(): FeedQuery {
   const [explore, dispatch] = useReducer(exploreReducer, INITIAL_EXPLORE)
 

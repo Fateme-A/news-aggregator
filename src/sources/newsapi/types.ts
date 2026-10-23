@@ -26,6 +26,5 @@ export interface NewsApiResponse {
   message?: string
 }
 
-/** The seven categories `/top-headlines` accepts. */
 export type NewsApiCategory =
   'business' | 'entertainment' | 'general' | 'health' | 'science' | 'sports' | 'technology'

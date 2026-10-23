@@ -6,12 +6,8 @@ function joinNames(names: string[]): string {
 }
 
 /**
- * "The New York Times cannot filter by category or author upstream, so its
- * results are narrowed in the browser."
- *
- * Grouped by the set of filters involved so that two providers with the same
- * limitation produce one sentence rather than two, and returns null when there
- * is nothing to disclose — the caller renders nothing at all in that case.
+ * Grouped by the filters involved, so two providers with the same limitation
+ * share one sentence. Null when there is nothing to disclose.
  */
 export function describeClientFilters(clientFilters: ClientFilter[]): string | null {
   if (clientFilters.length === 0) return null

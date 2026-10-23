@@ -5,7 +5,6 @@ import type { Article } from '@/domain/article'
  * directly, so the same story can arrive twice. Near-duplicates are collapsed.
  */
 
-/** Canonical URL ignoring tracking parameters and trailing slashes. */
 function urlKey(url: string): string | undefined {
   try {
     const parsed = new URL(url)
@@ -18,7 +17,6 @@ function urlKey(url: string): string | undefined {
   }
 }
 
-/** Title reduced to comparable form: no case, punctuation or outlet suffix. */
 function titleKey(title: string): string {
   return title
     .toLowerCase()
@@ -85,7 +83,6 @@ function byRecency(a: Article, b: Article): number {
   return tb - ta
 }
 
-/** Flatten per-source results into one feed: newest first, duplicates removed. */
 export function mergeArticles(pages: Article[][]): Article[] {
   return dedupeArticles(pages.flat().sort(byRecency))
 }

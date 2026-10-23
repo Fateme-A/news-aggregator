@@ -12,11 +12,9 @@ import { persist } from 'zustand/middleware'
 export const FEED_MODES = ['explore', 'my-feed'] as const
 export type FeedMode = (typeof FEED_MODES)[number]
 
-/** Pages keeps Previous and Next. Infinite appends the next page as you scroll. */
 export const BROWSE_MODES = ['pages', 'infinite'] as const
 export type BrowseMode = (typeof BROWSE_MODES)[number]
 
-/** The data half of the store — what is worth writing to localStorage. */
 export interface StoredPreferences {
   /** Providers to query. Empty is treated as "none selected" and shows a prompt. */
   sources: SourceId[]
@@ -34,7 +32,6 @@ export interface PreferencesState extends StoredPreferences {
   setMode: (mode: FeedMode) => void
   setBrowseMode: (mode: BrowseMode) => void
   reset: () => void
-  /** True when My Feed has at least one source, category, or author to follow. */
   hasPreferences: () => boolean
 }
 
