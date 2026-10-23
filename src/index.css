@@ -139,8 +139,10 @@ html.dark {
       radial-gradient(820px 380px at 100% -4%, rgb(255 255 255 / 0.03), transparent 52%);
   }
 
+  /* `color-scheme: dark` already paints this glyph light. Inverting it turns
+     the icon black, which disappears on the dark date field. */
   html.dark ::-webkit-calendar-picker-indicator {
-    filter: invert(1);
+    opacity: 0.9;
   }
 
   /* The search input's native clear affordance clashes with our own styling. */
