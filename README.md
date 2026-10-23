@@ -6,12 +6,17 @@ deduplicated feed, and lets a reader personalise that feed by source, category a
 
 React 19 · TypeScript (strict) · Vite 8 · TanStack Query · Zustand · Tailwind CSS 4 · nginx
 
-|            |                                                                            |
-| ---------- | -------------------------------------------------------------------------- |
-| **Run it** | `docker compose up --build` → <http://localhost:8080> — no API keys needed |
-| **Keys**   | Server-side only; never in the bundle, never in an image layer             |
-| **Tests**  | 204 across 21 files · 92% statements, 94% lines                            |
-| **Bundle** | 135 kB gzipped JS, 8 kB gzipped CSS · 9 runtime dependencies               |
+Live: <https://news-aggregator-one-beta.vercel.app/>
+
+![Newsstand on a phone](docs/screenshot.png)
+
+|            |                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| **Live**   | <https://news-aggregator-one-beta.vercel.app/>                                             |
+| **Run it** | `docker compose up --build` → <http://localhost:8080> — no API keys needed                 |
+| **Keys**   | Server-side only; never in the bundle, never in an image layer                             |
+| **Tests**  | 204 across 21 files · 92% statements, 94% lines                                            |
+| **Bundle** | 135 kB gzipped JS, 8 kB gzipped CSS · 9 runtime dependencies                               |
 
 ---
 
@@ -59,10 +64,10 @@ Keys are read at **container start**, not build time, so the image holds no cred
 
 ### Deploy on Vercel
 
-A reviewer can use live articles from a hosted URL without receiving the keys. Set
-`GUARDIAN_KEY`, `NYT_KEY`, and `NEWSAPI_KEY` in the Vercel project's environment settings
-(Production), then **redeploy** — Vercel binds environment variables at build time, so values
-added after the last deploy do not reach the running one:
+Deployed at <https://news-aggregator-one-beta.vercel.app/>. A reviewer can use live articles from
+that URL without receiving the keys. Set `GUARDIAN_KEY`, `NYT_KEY`, and `NEWSAPI_KEY` in the Vercel
+project's environment settings (Production), then **redeploy** — Vercel binds environment variables
+at build time, so values added after the last deploy do not reach the running one:
 
 ```bash
 npx vercel --prod
@@ -273,21 +278,4 @@ push, then builds the image and smoke-tests a **keyless** container.
 
 ## AI assistance
 
-AI was used as a pair-programming tool here, and it seems more useful to say how than to leave it
-implied.
-
-**What it did** — drafted implementation code, tests and configuration from specifications I set,
-carried out mechanical refactors, and produced first drafts of this README. It was also used as a
-reviewer: several fixes came from an adversarial review pass rather than from writing new code,
-including unvalidated `localStorage` reaching `getSource()`, a missing error boundary, and a Docker
-image that would not boot without API keys.
-
-**What stayed with me** — scope and architecture: the `NewsSource` port, capabilities-as-a-function,
-aggregating in the browser rather than adding a backend, and what to leave out. Every change was
-reviewed before it landed.
-
-**What was verified rather than trusted** — the provider behaviour above is the important case. The
-NYT `fq` results and NewsAPI's endpoint split are **measured against the live APIs**, not taken from
-a model's description of them, because a plausible-sounding wrong answer about an API is exactly the
-failure mode here. The mappers are tested against recorded real responses for the same reason. Every
-command in this README was run against this tree.
+AI contributed too.
