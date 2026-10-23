@@ -1,7 +1,7 @@
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv, type Connect, type Plugin, type ProxyOptions } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 /**
  * Upstream routing for the three news providers.
@@ -13,8 +13,8 @@ import tailwindcss from '@tailwindcss/vite'
  *      is the only way to reach it from a deployed page at all.
  *   2. API keys stay server-side and never enter the JS bundle.
  *
- * The production equivalent of this table lives in `nginx.conf.template`.
- * Keep the two in sync when adding a provider.
+ * The production equivalents are `nginx.conf.template` and `src/server/news-proxy.ts`.
+ * Keep them in sync when adding a provider.
  */
 interface Upstream {
   origin: string

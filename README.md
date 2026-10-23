@@ -57,6 +57,22 @@ docker compose up --build
 
 Keys are read at **container start**, not build time, so the image holds no credentials.
 
+### Deploy on Vercel
+
+A reviewer can use live articles from a hosted URL without receiving the keys. Set
+`GUARDIAN_KEY`, `NYT_KEY`, and `NEWSAPI_KEY` in the Vercel project's environment settings
+(Production), then:
+
+```bash
+npx vercel
+```
+
+`middleware.ts` attaches those values on the server. They are not in the repository and not in the
+JavaScript bundle. Leave a variable empty to keep that provider on its recorded sample.
+
+Docker does not receive these keys from git. Someone running the container still needs their own
+`.env.local`, or they get the samples.
+
 ### Local development
 
 Requires **Node 22** (what the Dockerfile and CI use).
