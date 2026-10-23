@@ -61,13 +61,14 @@ Keys are read at **container start**, not build time, so the image holds no cred
 
 A reviewer can use live articles from a hosted URL without receiving the keys. Set
 `GUARDIAN_KEY`, `NYT_KEY`, and `NEWSAPI_KEY` in the Vercel project's environment settings
-(Production), then:
+(Production), then **redeploy** — Vercel binds environment variables at build time, so values
+added after the last deploy do not reach the running one:
 
 ```bash
-npx vercel
+npx vercel --prod
 ```
 
-`middleware.ts` attaches those values on the server. They are not in the repository and not in the
+`api/index.ts` attaches those values on the server. They are not in the repository and not in the
 JavaScript bundle. Leave a variable empty to keep that provider on its recorded sample.
 
 Docker does not receive these keys from git. Someone running the container still needs their own

@@ -13,5 +13,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["vite.config.ts", "middleware.ts"]
+  "include": ["vite.config.ts", "api/index.ts"]
 }
