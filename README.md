@@ -9,7 +9,7 @@ React 19 · TypeScript (strict) · Vite 8 · TanStack Query · Zustand · Tailwi
 |            |                                                                            |
 | ---------- | -------------------------------------------------------------------------- |
 | **Run it** | `docker compose up --build` → <http://localhost:8080> — no API keys needed |
-| **Keys**   | Server-side only; never in the bundle, never in an image layer             |
+| **Keys**   | Optional. Docker reads `.env.example`; the Guardian key is the one to add  |
 | **Tests**  | 204 across 21 files · 92% statements, 94% lines                            |
 | **Bundle** | 135 kB gzipped JS, 8 kB gzipped CSS · 9 runtime dependencies               |
 
@@ -47,15 +47,26 @@ docker compose up --build          # → http://localhost:8080
 HOST_PORT=8090 docker compose up   # when 8080 is taken
 ```
 
-Without an `.env.local`, every provider serves its recorded sample and a notice above the feed says
-so, naming the reason per provider. Everything still works against that sample. For live data:
+With the key lines blank, every provider serves its recorded sample and a notice above the feed says
+so, naming the reason per provider. Everything still works against that sample.
+
+For live articles, the easiest key is **The Guardian**. Docker Compose reads [`.env.example`](.env.example),
+which is already in the project. Paste the key on that line and leave the other two blank:
+
+```
+GUARDIAN_KEY=your-key-here
+```
 
 ```bash
-cp .env.example .env.local         # fill in the three keys
 docker compose up --build
 ```
 
-Keys are read at **container start**, not build time, so the image holds no credentials.
+The New York Times and NewsAPI stay on the sample until those lines are filled in. Keys are read at
+**container start**, not build time, so the image holds no credentials. Editing the file and running
+`docker compose up` again is enough; the image does not need a rebuild for a key change.
+
+`.env.local` still overrides `.env.example` when you want a key that is not committed. `npm run dev`
+reads `.env.local` only — Vite does not load `.env.example`.
 
 ### Local development
 
@@ -76,8 +87,9 @@ Type check and coverage have no script of their own: `npx tsc -b`, `npx vitest r
 
 ## Configuration
 
-All three keys are free and self-serve; put them in `.env.local` (git- and Docker-ignored).
-**Every key is optional** — a blank one puts that provider on its sample while the others stay live.
+All three keys are free and self-serve. Docker reads them from `.env.example`. **Every key is
+optional** — a blank one puts that provider on its sample while the others stay live. Start with
+`GUARDIAN_KEY`; the other two can wait.
 
 | Variable       | Where                                                                             | Free tier               |
 | -------------- | --------------------------------------------------------------------------------- | ----------------------- |
@@ -245,12 +257,12 @@ push, then builds the image and smoke-tests a **keyless** container.
 
 ## Troubleshooting
 
-| Symptom                                    | Fix                                                         |
-| ------------------------------------------ | ----------------------------------------------------------- |
-| `Bind for 0.0.0.0:8080 failed`             | `HOST_PORT=8090 docker compose up --build`                  |
-| Everything says "sample articles"          | No keys — check `/api/status`, then fill `.env.local`       |
-| A provider rejects the key                 | The NYT issues a key _and_ a secret; this needs the **key** |
-| Live data works in `dev` but not `preview` | Preview has no provider proxy — use Docker                  |
+| Symptom                                    | Fix                                                                           |
+| ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `Bind for 0.0.0.0:8080 failed`             | `HOST_PORT=8090 docker compose up --build`                                    |
+| Everything says "sample articles"          | No keys — check `/api/status`, then set `GUARDIAN_KEY` in `.env.example`     |
+| A provider rejects the key                 | The NYT issues a key _and_ a secret; this needs the **key**                   |
+| Live data works in `dev` but not `preview` | Preview has no provider proxy — use Docker                                    |
 
 ---
 
