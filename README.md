@@ -8,9 +8,10 @@ React 19 · TypeScript (strict) · Vite 8 · TanStack Query · Zustand · Tailwi
 
 Live: <https://news-aggregator-one-beta.vercel.app/>
 
-![Newsstand](docs/screenshots/desktop.png)
-
-![Newsstand on a phone](docs/screenshots/mobile.png)
+<p>
+  <img src="docs/screenshots/desktop.png" alt="Newsstand" width="640" />
+  <img src="docs/screenshots/mobile.png" alt="Newsstand on a phone" width="180" />
+</p>
 
 |            |                                                                                            |
 | ---------- | ------------------------------------------------------------------------------------------ |
