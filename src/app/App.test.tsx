@@ -466,7 +466,7 @@ describe('App', () => {
   })
 
   describe('browsing mode', () => {
-    it('loads the next page when infinite scroll is selected', async () => {
+    it('loads the next page on the infinite default, and pages when that is chosen', async () => {
       const user = userEvent.setup()
       class ImmediateObserver {
         constructor(private readonly callback: IntersectionObserverCallback) {}
@@ -487,18 +487,11 @@ describe('App', () => {
       const { requests } = mockApi()
       renderApp()
 
-      await waitFor(() => expect(articleItems().length).toBeGreaterThan(0))
-      const firstPage = requests.length
-
-      await openSettings(user)
-      await user.click(screen.getByRole('button', { name: 'Infinite' }))
-      await user.click(screen.getByRole('button', { name: /^done$/i }))
-
       await waitFor(() => {
         expect(requests.some((url) => /[?&]page=2(?:&|$)/.test(url))).toBe(true)
       })
       expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
-      expect(requests.length).toBeGreaterThan(firstPage)
+      expect(usePreferences.getState().browseMode).toBe('infinite')
 
       await openSettings(user)
       await user.click(screen.getByRole('button', { name: 'Pages' }))
@@ -519,14 +512,15 @@ describe('App', () => {
 
       expect(requests).toHaveLength(0)
       expect(screen.getByText(/no requests are sent to the news apis/i)).toBeInTheDocument()
-      // The sample is a single recorded page, so there is nothing to page into.
-      expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+      // The sample is a single recorded page, so infinite scroll has nothing further to load.
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+      expect(screen.getByText(/end of the feed/i)).toBeInTheDocument()
     })
 
     it('can return to Auto after choosing Live or Demo', async () => {
-      // Auto is the default and the only mode that degrades gracefully. Without
-      // a segment of its own it was unreachable for the life of the browser
-      // profile once the reader touched the control.
+      // Auto stays reachable after Live or Demo. Without a segment of its own
+      // it was unreachable for the life of the browser profile once the reader
+      // touched the control.
       const user = userEvent.setup()
       mockApi()
       renderApp()
@@ -653,14 +647,15 @@ describe('App', () => {
       await openSettings(user)
 
       const browsing = within(screen.getByRole('group', { name: 'Browsing' }))
-      expect(browsing.getByRole('button', { name: 'Pages' })).toHaveAttribute(
+      expect(browsing.getByRole('button', { name: 'Infinite' })).toHaveAttribute(
         'aria-pressed',
         'true',
       )
-      expect(browsing.getByRole('button', { name: 'Infinite' })).toBeInTheDocument()
+      expect(browsing.getByRole('button', { name: 'Pages' })).toBeInTheDocument()
 
       const data = within(screen.getByRole('group', { name: 'Article data' }))
-      for (const name of ['Auto', 'Live', 'Demo']) {
+      expect(data.getByRole('button', { name: 'Live' })).toHaveAttribute('aria-pressed', 'true')
+      for (const name of ['Auto', 'Demo']) {
         expect(data.getByRole('button', { name })).toBeInTheDocument()
       }
     })

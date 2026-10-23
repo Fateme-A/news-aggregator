@@ -1,5 +1,5 @@
-import '@testing-library/jest-dom/vitest'
 import { useDataMode } from '@/store/data-mode'
+import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach, beforeEach } from 'vitest'
 
@@ -43,8 +43,8 @@ Object.defineProperty(globalThis, 'localStorage', {
 })
 
 beforeEach(() => {
-  // The product defaults to auto, which would swallow the 429s these tests
-  // assert on. Live is the explicit "always call the API" path.
+  // Live is the product default and the path these tests assert on. Set it
+  // again so a previous test's Demo or Auto choice cannot leak.
   useDataMode.getState().setPreference('live')
   useDataMode.getState().setAvailability('unknown')
   // setPreference also clears the rate-limit breaker, so no provider stays

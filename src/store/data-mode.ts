@@ -18,9 +18,9 @@ function loadPreference(): DataPreference {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw === 'auto' || raw === 'live' || raw === 'demo') return raw
   } catch {
-    return 'auto'
+    return 'live'
   }
-  return 'auto'
+  return 'live'
 }
 
 interface DataModeState {

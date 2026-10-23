@@ -40,7 +40,7 @@ const INITIAL: StoredPreferences = {
   categories: [],
   authors: [],
   mode: 'explore',
-  browseMode: 'pages',
+  browseMode: 'infinite',
 }
 
 function isOneOf<T extends string>(allowed: readonly T[], value: unknown): value is T {
